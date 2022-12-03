@@ -17,4 +17,6 @@ HEADERS += \
     $$PWD/qrmk_test_functional.h
 
 SOURCES += \
-    $$PWD/qrmk_functional_test.cpp
+    $$PWD/main.cpp \
+    $$PWD/qrmk_functional_test.cpp \
+    $$PWD/qrmk_test.cpp \

@@ -313,7 +313,6 @@ public:
                 painter.setPen(Qt::black);
                 painter.drawRect(rect);
 
-
                 rect=QRect(rectBase.x()+textOffSetL, startY/*+textOffSetL*/, rectBase.width()-(textOffSetR), rectBase.height()/*-textOffSetB*/);
 
                 painter.setBrush(Qt::NoBrush);
@@ -321,6 +320,7 @@ public:
                 QRect boundingRect;
                 painter.drawText(rect, Qt::AlignCenter | Qt::TextWordWrap, value, &boundingRect);
             }
+            nextY(0.2);
         };
 
         auto writeLine=[this, &nextY, &startY, &painter, &columnsRow](const QVariantHash &itemRow)//draw headers

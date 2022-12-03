@@ -16,6 +16,6 @@ QMAKE_CXXFLAGS += -DQRMK_TEST_MODE=\\\"$$QRMK_TEST_MODE\\\"
 LIBS += -lgmock
 LIBS += -lgtest
 
-include($$PWD/src/qrmk.pri)
-include($$PWD/src/qrmk-test.pri)
+include($$PWD/../qstm/qstm.pri)
+include($$PWD/test/qrmk-test.pri)
 

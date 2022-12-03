@@ -1,11 +1,13 @@
 #ifndef Q_RMK_DateUtilTestUnit_H
 #define Q_RMK_DateUtilTestUnit_H
 
-#include "./qrmk_test_unit.h"
-#include "../src/qrmk.h"
 #include <QDate>
 #include <QTime>
 #include <QDateTime>
+#include <QFile>
+#include "./qrmk_test_unit.h"
+#include "../src/qrmk.h"
+#include "../qstm/src/qstm_util_variant.h"
 
 namespace QRmk {
 
@@ -50,57 +52,57 @@ TEST_F(ERP_Request_Report_Test_V1, reportSimple)
         headers
                 .header("dt")
                 .title("Date")
-                .align(vaCenter)
-                .dataType(vDate)
+                .align(Header::Center)
+                .dataType(Header::Date)
                 .width("10%");
         headers
                 .header("uuid")
                 .title("ID")
-                .align(vaCenter)
-                .dataType(vUuid)
+                .align(Header::Center)
+                .dataType(Header::Uuid)
                 .visible(false);
 
         headers
                 .header("name")
                 .title("Name")
-                .align(vaStart)
-                .dataType(vString)
+                .align(Header::Start)
+                .dataType(Header::String)
                 .visible(false);
 
         headers
                 .header("?")
                 .title("Name")
-                .align(vaStart)
+                .align(Header::Start)
                 .format("${uuid} - ${name}")
                 .width("55%");
 
         headers
                 .header("value")
                 .title("Value")
-                .align(vaEnd)
-                .dataType(vCurrency)
+                .align(Header::End)
+                .dataType(Header::Currency)
                 .width("15%");
 
         headers
                 .header("enabled")
                 .title("Status")
-                .align(vaCenter)
-                .dataType(vBoolean)
+                .align(Header::Center)
+                .dataType(Header::Boolean)
                 .width("10%");
 
         headers
                 .header("document01")
-                .dataType(vString)
+                .dataType(Header::String)
                 .visible(false);
 
         headers
                 .header("document02")
-                .dataType(vString)
+                .dataType(Header::String)
                 .visible(false);
 
         headers
                 .header("document03")
-                .dataType(vString)
+                .dataType(Header::String)
                 .visible(false);
     };
 
@@ -108,14 +110,34 @@ TEST_F(ERP_Request_Report_Test_V1, reportSimple)
     {
         headers
                 .header("dt")
-                .computeMode(vMax);
+                .computeMode(Header::Max);
         headers
                 .header("uuid")
-                .computeMode(vCount);
+                .computeMode(Header::Count);
 
         headers
                 .header("value")
-                .computeMode(vSum);
+                .computeMode(Header::Sum);
+    };
+
+    auto makeFilters=[](Headers &)
+    {
+        return QVariantHash{
+            {"dt",
+             QVariantHash{
+                 {"title","Date"},
+                 {"field","dt"},
+                 {"value",QVariantHash{{"start","2021-01-01"},{"end","2021-01-15"}}},
+             }
+            },
+            {"uuid",
+             QVariantHash{
+                 {"title","Id"},
+                 {"field","uuid"},
+                 {"value",QUuid::createUuid()},
+             }
+            }
+        };
     };
 
     auto makerSignature=[](Signatures &signatures)
@@ -157,23 +179,7 @@ TEST_F(ERP_Request_Report_Test_V1, reportSimple)
             .extraPageInfo({"${name}-${uuid}","${uuid}-${name}"})
             .owner("Company test")
             .items(makeItemsSimple())
-            .filters(
-                QVariantHash{
-                    {"dt",
-                     QVariantHash{
-                         {"title","Date"},
-                         {"field","dt"},
-                         {"value",QVariantHash{{"start","2021-01-01"},{"end","2021-01-15"}}},
-                     }
-                    },
-                    {"uuid",
-                     QVariantHash{
-                         {"title","Id"},
-                         {"field","uuid"},
-                         {"value",QUuid::createUuid()},
-                     }
-                    }
-                })
+            .filters(makeFilters)
             .headers(makeHeaders)
             .summary(makeSummary)
             .signature(makerSignature)
@@ -184,6 +190,8 @@ TEST_F(ERP_Request_Report_Test_V1, reportSimple)
     EXPECT_TRUE(QFile::exists(maker.make(Maker::PDF).outFileName()))<<"failure: service stop";
     EXPECT_TRUE(QFile::exists(maker.make(Maker::CSV).outFileName()))<<"failure: service stop";
     EXPECT_TRUE(QFile::exists(maker.make(Maker::TXT).outFileName()))<<"failure: service stop";
+}
+
 }
 
 #endif // Q_RMK_DateUtilTestUnit_H

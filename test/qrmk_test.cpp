@@ -1,6 +1,4 @@
 #include "./qrmk_test.h"
-#include "../src/qrmk_types.h"
-#include "../src/qrmk_meta_types.h"
 
 namespace QRmk
 {
@@ -23,18 +21,34 @@ QStringList SDKGoogleTest::arguments() const
 const QByteArray SDKGoogleTest::toMd5(const QVariant &v)
 {
     QByteArray bytes;
-    if(!QMetaTypeUtilObjectMetaData.contains(v.typeId()))
-        bytes=v.toByteArray();
-    else
+    switch (v.typeId()) {
+    case QMetaType::QVariantHash:
+    case QMetaType::QVariantMap:
+    case QMetaType::QVariantList:
+    case QMetaType::QStringList:
+    case QMetaType::QVariantPair:
         bytes=QJsonDocument::fromVariant(v).toJson(QJsonDocument::Compact);
+        break;
+    default:
+        bytes=v.toByteArray();
+        break;
+    }
     return QCryptographicHash::hash(bytes, QCryptographicHash::Md5).toHex();
 }
 
 const QVariant SDKGoogleTest::toVar(const QVariant &v)
 {
-    if(QMetaTypeUtilString.contains(v.typeId()))
+    switch (v.typeId()) {
+    case QMetaType::QVariantHash:
+    case QMetaType::QVariantMap:
+    case QMetaType::QVariantList:
+    case QMetaType::QStringList:
+    case QMetaType::QVariantPair:
         return QJsonDocument::fromJson(v.toByteArray()).toVariant();
-    return v;
+        break;
+    default:
+        return v;
+    }
 }
 
 }
