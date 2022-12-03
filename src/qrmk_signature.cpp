@@ -1,5 +1,6 @@
 #include "./qrmk_signature.h"
 #include <QApplication>
+#include "../qstm/src/qstm_meta_enum.h"
 
 namespace QRmk{
 

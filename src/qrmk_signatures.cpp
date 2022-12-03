@@ -1,5 +1,5 @@
 #include "./qrmk_signatures.h"
-
+#include "../qstm/src/qstm_util_variant.h"
 #include <QString>
 #include <QLocale>
 

@@ -1,4 +1,6 @@
-TARGET = QStm
+TARGET = QRmk
 TEMPLATE = lib
 
-include($$PWD/src/qstm.pri)
+include($$PWD/../qstm/src/qstm.pri)
+include($$PWD/src/qrmk.pri)
+

@@ -6,6 +6,9 @@
 #include <QPen>
 #include <QTextDocument>
 #include <QAbstractTextDocumentLayout>
+#include "../qstm/src/qstm_util_variant.h"
+#include "../qstm/src/qstm_meta_enum.h"
+#include "../qstm/src/qstm_util_formatting.h"
 
 namespace QRmk{
 

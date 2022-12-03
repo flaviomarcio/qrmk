@@ -1,7 +1,7 @@
 #pragma once
 
-#include <QtReforce/QStm>
 #include <QList>
+#include "../qstm/src/qstm_object_wrapper.h"
 #include "./qrmk_global.h"
 #include "./qrmk_signature.h"
 

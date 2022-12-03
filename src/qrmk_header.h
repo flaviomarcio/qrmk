@@ -1,8 +1,8 @@
 #pragma once
 
-#include <QtReforce/QStm>
 #include <QColor>
 #include <QFont>
+#include "../qstm/src/qstm_object_wrapper.h"
 #include "./qrmk_global.h"
 
 namespace QRmk{
