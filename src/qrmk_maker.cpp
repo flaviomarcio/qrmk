@@ -19,6 +19,16 @@ static const auto extTXT="txt";
 static const auto sepCSV=";";
 static const auto sepTXT="|";
 
+static const auto __row_type="__type";
+static const auto __value="__value";
+
+static const auto __total=QObject::tr("Totalização");
+static const auto __totalFinal=QObject::tr("Totalização final");
+
+enum RowType{
+    RowHeader, RowValues, RowSingle, RowSummary, RowSummaryFinal
+};
+
 class MakerPvt:public QObject{
 public:
     Maker*parent=nullptr;
@@ -95,6 +105,8 @@ public:
             }
         }
 
+        this->maxRows=(maxRows>0)?maxRows:this->getLines();
+
     }
 
     int getLines()
@@ -108,6 +120,312 @@ public:
             return 90;
         }
     };
+
+    QVariantList makeRecords()
+    {
+        QVariantList vList;
+
+        QVariantHash itemRecord;
+
+        auto writeSingleLine=[this, &vList](const QVariant &outItem)//draw headers
+        {
+            if(headersList.isEmpty())
+                return;
+
+            QStringList textLine;
+            switch (outItem.typeId()) {
+            case QMetaType::QVariantPair:
+            case QMetaType::QVariantHash:
+            case QMetaType::QVariantMap:
+            {
+                auto itemRow=outItem.toHash();
+                for(auto &header : headersList){
+                    auto value=itemRow.value(header->field());
+
+                    if(value.isNull() && !value.isValid())
+                        continue;
+
+                    auto valueText=header->toFormattedValue(value);
+                    static const auto __format=QString("%1: %2");
+                    if(!header->title().isEmpty() && !valueText.isEmpty())
+                        textLine.append(__format.arg(header->title(), valueText));
+                    else if(!header->title().isEmpty())
+                        textLine.append(header->title());
+                    else if(valueText.isEmpty())
+                        textLine.append(valueText);
+                }
+                break;
+            }
+            default:
+                Q_DECLARE_VU;
+                auto v=vu.toStr(outItem).trimmed();
+                if(!v.isEmpty())
+                    textLine.append(v);
+                break;
+            }
+
+            if(textLine.isEmpty())
+                return;
+
+
+            Header *header=headersList.first();
+            if(header==nullptr)
+                return;
+            static const auto __spacer=", ";
+
+
+            vList.append(QVariantHash{
+                             {__row_type,RowSingle},
+                             {__value,textLine.join(__spacer)}
+                         });
+
+        };
+
+
+        auto writeSummary=[this, &vList, &writeSingleLine](const QVariantList &vSummaryList, int rowType, const QString &totalMessage)
+        {
+            if(this->summary.isEmpty())
+                return false;
+
+            Q_DECLARE_VU;
+
+            auto checkMajor=[&vu](const Header *header, const QVariant &currentValue, const QVariant &newValue){
+                if(currentValue.isNull() || !currentValue.isValid())
+                    return newValue;
+
+                switch (header->dataType()) {
+                case Header::Double:
+                case Header::Integer:
+                case Header::Number:
+                case Header::Currency:{
+                    auto v0=vu.toDouble(currentValue);
+                    auto v1=vu.toDouble(currentValue);
+                    QVariant v=(v0<v1)?v1:v0;
+                    return v;
+                }
+                case Header::Date:
+                case Header::DateTime:
+                {
+                    auto v0=vu.toDateTime(currentValue);
+                    auto v1=vu.toDateTime(currentValue);
+                    QVariant v=(v0<v1)?v1:v0;
+                    return v;
+                }
+                default:
+                    return currentValue;
+                }
+            };
+
+            auto checkMinor=[&vu](const Header *header, const QVariant &currentValue, const QVariant &newValue){
+                if(currentValue.isNull() || !currentValue.isValid())
+                    return newValue;
+
+                switch (header->dataType()) {
+                case Header::Double:
+                case Header::Integer:
+                case Header::Number:
+                case Header::Currency:{
+                    auto v0=vu.toDouble(currentValue);
+                    auto v1=vu.toDouble(currentValue);
+                    QVariant v=(v0<v1)?v1:v0;
+                    return v;
+                }
+                case Header::Date:
+                case Header::DateTime:
+                {
+                    auto v0=vu.toDateTime(currentValue);
+                    auto v1=vu.toDateTime(currentValue);
+                    QVariant v=(v0<v1)?v1:v0;
+                    return v;
+                }
+                default:
+                    return currentValue;
+                }
+            };
+
+            QVariantHash itemSummary;
+            for(auto &item: vSummaryList){
+                auto itemRecord=item.toHash();
+                QVariant value;
+                for(auto &header:this->summary.list()){
+
+                    auto itemSummaryValue=itemRecord.value(header->field());
+                    if(itemSummaryValue.isNull() || !itemSummaryValue.isValid())
+                        continue;
+
+                    auto list=itemSummary.value(header->field()).toList();
+
+                    switch (header->computeMode()) {
+                    case Header::Count:
+                    {
+                        if(!list.contains(itemSummaryValue))
+                            list.append(itemSummaryValue);
+                        value=list;
+                        break;
+                    }
+                    case Header::Sum:
+                    case Header::Max:
+                    case Header::Min:
+                    case Header::Avg:
+                    {
+                        list.append(itemSummaryValue);
+                        value=list;
+                        break;
+                    }
+                    default:
+                        value={};
+                        break;
+                    }
+                    if(value.isValid() && !value.isNull())
+                        itemSummary.insert(header->field(), value);
+                }
+            }
+
+
+            for(auto &header:this->summary.list()){
+                auto &value=itemSummary[header->field()];
+
+                auto vList=value.toList();
+
+                if(vList.isEmpty()){
+                    value={};
+                    continue;
+                }
+
+                switch (header->computeMode()) {
+                case Header::Count:
+                {
+                    value=vList.count();
+                    break;
+                }
+                case Header::Sum:
+                case Header::Max:
+                case Header::Min:
+                {
+                    QVariant calc;
+                    for(auto&v:vList){
+                        switch (header->computeMode()) {
+                        case Header::Sum:
+                            calc=calc.toDouble()+vu.toDouble(v);
+                            break;
+                        case Header::Max:
+                            calc=checkMajor(header, calc, v);
+                            break;
+                        case Header::Min:
+                            calc=checkMinor(header, calc, v);
+                        default:
+                            break;
+                        }
+                    }
+                    value=calc;
+                    break;
+                }
+                case Header::Avg:
+                {
+                    double calc=0;
+                    for(auto&v:vList){
+                        calc+=vu.toDouble(v);
+                        break;
+                    }
+                    value=calc/vList.count();
+                    break;
+                }
+                default:
+                    value={};
+                    break;
+                }
+            }
+
+            QVariantHash itemRowFormatted;
+            for(auto &header : this->summary.list()){
+                auto value=itemSummary.value(header->field());
+                value=header->toFormattedValue(value);
+                itemRowFormatted.insert(header->field(), value);
+            }
+
+            writeSingleLine(totalMessage);
+            vList.append(QVariantHash{
+                             {__row_type, rowType},
+                             {__value,itemRowFormatted}
+                         });
+            return true;
+        };
+
+
+        QVariantHash vLastRow;
+        QVariantList vSummaryRows;
+        auto groupingCheck=[this, &vLastRow, &vSummaryRows, &writeSummary, &writeSingleLine](const QVariantHash &itemRow, bool lastSummary=false)//draw headers
+        {
+
+
+
+            Q_DECLARE_VU;
+            QVariantHash vGroupRow;
+            if(!lastSummary){
+
+                if(vLastRow.isEmpty()){//first call check
+                    vLastRow=itemRow;
+                    vSummaryRows.append(itemRow);//rows to group summary
+                    return false;
+                }
+
+                {
+                    //new group check
+                    for(auto&headerName:this->groupingFields){
+                        if(!this->headers.contains(headerName))
+                            continue;
+
+                        const auto &header=this->headers.header(headerName);
+
+                        vGroupRow.insert(header.field(), itemRow.value(header.field()));
+
+                        auto v0=vu.toByteArray(itemRow.value(header.field()));
+                        auto v1=vu.toByteArray(vLastRow.value(header.field()));
+                        if(v0==v1)
+                            continue;
+
+                        vLastRow={};//clear for summary and grouping
+                    }
+                }
+
+                if(!vLastRow.isEmpty()){
+                    vSummaryRows.append(itemRow);//rows to group summary
+                    return false;
+                }
+            }
+
+            writeSummary(vSummaryRows, RowSummary, __total);
+
+            vLastRow=itemRow;
+            vSummaryRows.clear();
+            vSummaryRows.append(itemRow);//rows to group summary
+
+            writeSingleLine(vGroupRow);
+            return true;
+        };
+
+
+
+        {//write pages
+            itemRecord=(this->items.isEmpty())?itemRecord:this->items.first().toHash();
+            for(auto &item: this->items){
+                vList.append(QVariantHash{
+                                 {__row_type,RowValues},
+                                 {__value,item}
+                             });
+                itemRecord=item.toHash();
+                groupingCheck(itemRecord);
+            }
+        }
+
+        groupingCheck({},true);
+
+
+        writeSummary(this->items, RowSummaryFinal, __totalFinal);
+
+        return vList;
+    }
+
 
     QByteArray getColumnSeparator()const
     {
@@ -616,7 +934,7 @@ public:
         QVariantList vSummaryRows;
         auto groupingCheck=[this, &nextY, &vLastRow, &vSummaryRows, &writeSingleLine, &writeSummary](const QVariantHash &itemRow, bool lastSummary=false)//draw headers
         {
-            Q_UNUSED(lastSummary)
+
 
 
             Q_DECLARE_VU;
@@ -654,7 +972,6 @@ public:
                 }
             }
 
-            static const auto __total=tr("Totalização");
             writeSummary(vSummaryRows, __total);
 
             vLastRow=itemRow;
@@ -837,8 +1154,7 @@ public:
 
         groupingCheck({},true);
 
-        static const auto __total=tr("Totalização final");
-        writeSummary(this->items, __total);
+        writeSummary(this->items, __totalFinal);
 
         writeSignatures();
         painter.end();
@@ -964,6 +1280,12 @@ Maker &Maker::make(const OutFormat outFormat)
         break;
     }
     return *this;
+}
+
+QVariantList Maker::makeRecords()
+{
+    p->prepare();
+    return p->makeRecords();
 }
 
 Maker &Maker::clean()

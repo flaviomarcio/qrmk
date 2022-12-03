@@ -45,6 +45,13 @@ public:
     Maker &make(const OutFormat outFormat=PDF);
 
     //!
+    //! \brief makeRecords
+    //! \param vList
+    //! \return
+    //!
+    QVariantList makeRecords();
+
+    //!
     //! \brief clean
     //! \return
     //!
