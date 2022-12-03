@@ -26,7 +26,7 @@ static const auto __total=QObject::tr("Totalização");
 static const auto __totalFinal=QObject::tr("Totalização final");
 
 enum RowType{
-    RowHeader, RowValues, RowSingle, RowSummary, RowSummaryFinal
+    RowValues, RowSingle, RowSummary, RowSummaryFinal
 };
 
 class MakerPvt:public QObject{
@@ -164,8 +164,8 @@ public:
                 break;
             }
 
-            if(textLine.isEmpty())
-                return;
+//            if(textLine.isEmpty())
+//                return;
 
 
             Header *header=headersList.first();
@@ -395,11 +395,11 @@ public:
             }
 
             writeSummary(vSummaryRows, RowSummary, __total);
+            writeSingleLine({});
 
             vLastRow=itemRow;
             vSummaryRows.clear();
             vSummaryRows.append(itemRow);//rows to group summary
-
             writeSingleLine(vGroupRow);
             return true;
         };
