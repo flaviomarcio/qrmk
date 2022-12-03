@@ -19,8 +19,8 @@ static const auto extTXT="txt";
 static const auto sepCSV=";";
 static const auto sepTXT="|";
 
-static const auto __row_type="__type";
-static const auto __value="__value";
+static const auto __rowType="__row_type__";
+static const auto __rowValue="__row_value__";
 
 static const auto __total=QObject::tr("Totalização");
 static const auto __totalFinal=QObject::tr("Totalização final");
@@ -175,8 +175,8 @@ public:
 
 
             vList.append(QVariantHash{
-                             {__row_type,RowSingle},
-                             {__value,textLine.join(__spacer)}
+                             {__rowType,RowSingle},
+                             {__rowValue,textLine.join(__spacer)}
                          });
 
         };
@@ -345,8 +345,8 @@ public:
 
             writeSingleLine(totalMessage);
             vList.append(QVariantHash{
-                             {__row_type, rowType},
-                             {__value,itemRowFormatted}
+                             {__rowType, rowType},
+                             {__rowValue,itemRowFormatted}
                          });
             return true;
         };
@@ -410,8 +410,8 @@ public:
             itemRecord=(this->items.isEmpty())?itemRecord:this->items.first().toHash();
             for(auto &item: this->items){
                 vList.append(QVariantHash{
-                                 {__row_type,RowValues},
-                                 {__value,item}
+                                 {__rowType,RowValues},
+                                 {__rowValue,item}
                              });
                 itemRecord=item.toHash();
                 groupingCheck(itemRecord);
