@@ -198,7 +198,7 @@ public:
         this->rowHeight=(this->rowHeight>0)?this->rowHeight:(totalHeight*0.02);
         this->maxRows=(maxRows>0)?maxRows:this->getLines();
 
-        QHash<Header*, QRect> columnsRec;
+        QHash<Header*, QRect> columnsRow, columnsHeaders;
 
 
 
@@ -236,7 +236,9 @@ public:
                 this->rowWidth+=w;
                 int h=this->rowHeight;
                 auto rect=QRect{pointLine.x(), startY, w, h};
-                columnsRec.insert(header, rect);
+                columnsRow.insert(header, rect);
+                rect=QRect{pointLine.x(), startY, w, int(h*1.2)};
+                columnsHeaders.insert(header, rect);
                 pointLine.setX(startX+=w);
             }
         }
@@ -295,13 +297,13 @@ public:
             painter.drawRect(rect);
         };
 
-        auto writeColumns=[this, &nextY, &startY, &painter, &columnsRec]()//draw headers
+        auto writeColumns=[this, &nextY, &startY, &painter, &columnsHeaders]()//draw headers
         {
             nextY();
             painter.setFont(fontNormal);
             for(auto header : headersList){
                 auto value=header->title();
-                auto rectBase = columnsRec.value(header);
+                auto rectBase = columnsHeaders.value(header);
                 auto rect=QRect(rectBase.x(), startY, rectBase.width(), rectBase.height());
 
                 painter.setBrush(Qt::lightGray);
@@ -309,7 +311,7 @@ public:
                 painter.drawRect(rect);
 
 
-                rect=QRect(rectBase.x()+textOffSetL, startY+textOffSetL, rectBase.width()-(textOffSetR), rectBase.height()-textOffSetB);
+                rect=QRect(rectBase.x()+textOffSetL, startY/*+textOffSetL*/, rectBase.width()-(textOffSetR), rectBase.height()/*-textOffSetB*/);
 
                 painter.setBrush(Qt::NoBrush);
                 painter.setPen(Qt::black);
@@ -318,7 +320,7 @@ public:
             }
         };
 
-        auto writeLine=[this, &nextY, &startY, &painter, &columnsRec](const QVariantHash &itemRow)//draw headers
+        auto writeLine=[this, &nextY, &startY, &painter, &columnsRow](const QVariantHash &itemRow)//draw headers
         {
             nextY();
             int startX=-1;
@@ -326,7 +328,7 @@ public:
             for(auto &header : headersList){
                 auto value=itemRow.value(header->field()).toString();
 
-                auto rectBase = columnsRec.value(header);
+                auto rectBase = columnsRow.value(header);
                 auto rect=QRect(rectBase.x(), startY, rectBase.width(), rectBase.height());
 
                 painter.setBrush(Qt::NoBrush);
