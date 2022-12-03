@@ -49,10 +49,31 @@ public:
     QRect rectFull={};
     QList<Header *> headersList;
 
-    explicit MakerPvt(Maker *parent=nullptr):QObject{parent},headers{parent}, summary{parent}, signature{parent}
+    explicit MakerPvt(Maker *parent=nullptr):QObject{parent}, headers{this}, summary{this}, signature{this}
     {
         this->parent=parent;
     }
+
+    void clean()
+    {
+        this->items.clear();
+    }
+
+    void clear()
+    {
+        this->outFileName.clear();
+        this->items.clear();
+        this->owner.clear();
+        this->title.clear();
+        this->filters.clear();
+        this->groupingDisplay.clear();
+        this->groupingFields.clear();
+        this->extraPageInfo.clear();
+        this->headersList.clear();
+        this->headers.clear();
+        this->summary.clear();
+    }
+
 
     void prepare()
     {
@@ -940,6 +961,18 @@ Maker &Maker::make(const OutFormat outFormat)
     return *this;
 }
 
+Maker &Maker::clean()
+{
+    p->clean();
+    return *this;
+}
+
+Maker &Maker::clear()
+{
+    p->clear();
+    return *this;
+}
+
 QString &Maker::outFileName() const
 {
     return p->outFileName;
@@ -1032,27 +1065,19 @@ Maker &Maker::setExtraPageInfo(const QStringList &newExtraPageInfo)
     return *this;
 }
 
-Maker &Maker::reextraPageInfo()
-{
-    return extraPageInfo({});
-}
-
 QVariantHash &Maker::filters()
 {
     return p->filters;
 }
 
-Maker &Maker::filters(const QVariant &newFilters)
-{
-    return this->setFilters(newFilters);
-}
-
-Maker &Maker::setFilters(const QVariant &newFilters)
+Maker &Maker::filters(MakerFiltersFunc maker)
 {
     Q_DECLARE_VU;
-    p->filters = vu.toHash(newFilters);
+    if(maker)
+        p->filters = maker(this->headers());
     return *this;
 }
+
 
 Headers &Maker::headers() const
 {

@@ -37,7 +37,7 @@ public:
 
         auto &item=collection[name];
         if(!item){
-            item=new Header{this->parent};
+            item=new Header{this};
             item->field(name);
             if (!this->order.contains(name))
                 this->order.append(name);
@@ -89,7 +89,7 @@ Header &Headers::header(const QString &fieldName)
     return p->add(fieldName);
 }
 
-const Headers &Headers::item(const QString &fieldName, const QVariant &values) const
+const Headers &Headers::header(const QString &fieldName, const QVariant &values) const
 {
     if(fieldName.trimmed().isEmpty())
         return *this;

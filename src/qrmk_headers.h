@@ -36,7 +36,7 @@ public:
     //! \return
     //!
     Header &header(const QString &fieldName);
-    const Headers &item(const QString &fieldName, const QVariant &values)const;
+    const Headers &header(const QString &fieldName, const QVariant &values)const;
 
     //!
     //! \brief remove

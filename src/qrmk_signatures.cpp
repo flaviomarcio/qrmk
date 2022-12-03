@@ -40,7 +40,7 @@ public:
         auto name=document.trimmed().toLower();
         auto &item=collection[name];
         if(!item){
-            item=new Signature{this->parent};
+            item=new Signature{this};
             item->document(name);
             if (!this->order.contains(name))
                 this->order.append(name);

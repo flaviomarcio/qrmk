@@ -13,6 +13,7 @@ static const auto vTXT="TXT";
 
 class MakerPvt;
 typedef std::function<void(Headers &headers)> MakerHeadersFunc;
+typedef std::function<QVariantHash(Headers &headers)> MakerFiltersFunc;
 typedef std::function<void(Signatures &signatures)> MakerSignatureFunc;
 class Q_RMK_EXPORT Maker : public QObject
 {
@@ -42,6 +43,18 @@ public:
     //! \return
     //!
     Maker &make(const OutFormat outFormat=PDF);
+
+    //!
+    //! \brief clean
+    //! \return
+    //!
+    Maker &clean();
+
+    //!
+    //! \brief clear
+    //! \return
+    //!
+    Maker &clear();
 
     //!
     //! \brief outFileName
@@ -88,14 +101,13 @@ public:
     QStringList extraPageInfo() const;
     Maker &extraPageInfo(const QStringList &newExtraPageInfo);
     Maker &setExtraPageInfo(const QStringList &newExtraPageInfo);
-    Maker &reextraPageInfo();
 
     //!
     //! \brief filters
     //! \return
     //!
     QVariantHash &filters();
-    Maker &filters(const QVariant &newFilters);
+    Maker &filters(MakerFiltersFunc maker);
     Maker &setFilters(const QVariant &newFilters);
 
     //!
