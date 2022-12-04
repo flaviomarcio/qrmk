@@ -15,6 +15,10 @@ class ERP_Request_Report_Test_V1 : public SDKGoogleTestUnit {
 public:
     Maker maker;
 
+    explicit ERP_Request_Report_Test_V1():SDKGoogleTestUnit(){
+        this->prepare();
+    }
+private:
     void prepare()
     {
 
@@ -64,12 +68,6 @@ public:
                     .title("Name")
                     .align(Header::Start)
                     .dataType(Header::String)
-                    .visible(false);
-
-            headers
-                    .header("?")
-                    .title("Name")
-                    .align(Header::Start)
                     .format("${uuid} - ${name}")
                     .width("55%");
 
@@ -106,11 +104,13 @@ public:
         auto makeSummary=[](Headers &headers)
         {
             headers
+                    .header("name")
+                    .format("Registros ${name}")
+                    .computeMode(Header::Count);
+
+            headers
                     .header("dt")
                     .computeMode(Header::Max);
-            headers
-                    .header("uuid")
-                    .computeMode(Header::Count);
 
             headers
                     .header("value")
@@ -190,7 +190,6 @@ public:
 
 TEST_F(ERP_Request_Report_Test_V1, reportSimple)
 {
-    this->prepare();
     EXPECT_TRUE(QFile::exists(maker.make(Maker::PDF).outFileName()))<<"failure: maker.make(Maker::PDF)";
     EXPECT_TRUE(QFile::exists(maker.make(Maker::CSV).outFileName()))<<"failure: maker.make(Maker::CSV)";
     EXPECT_TRUE(QFile::exists(maker.make(Maker::TXT).outFileName()))<<"failure: maker.make(Maker::TXT)";
@@ -198,9 +197,7 @@ TEST_F(ERP_Request_Report_Test_V1, reportSimple)
 
 TEST_F(ERP_Request_Report_Test_V1, reportRecords)
 {
-    this->prepare();
     auto vList=maker.makeRecords();
-
     EXPECT_TRUE(!vList.isEmpty())<<"failure: maker.makeRecords()";
 }
 

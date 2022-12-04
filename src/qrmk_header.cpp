@@ -28,6 +28,31 @@ public:
     const QString toFormatted(const QVariant &v, const int dataType)
     {
         Q_DECLARE_FU;
+
+        switch (Header::DataType(dataType)) {
+        case Header::Integer:
+        case Header::Number:
+        case Header::Double:
+        case Header::Currency:{
+            if(!v.toString().trimmed().isEmpty()){
+                if(v.toDouble()==0)
+                    return v.toString();
+            }
+            break;
+        }
+        case Header::Date:
+        case Header::Time:
+        case Header::DateTime:
+        {
+            if(!v.toString().trimmed().isEmpty()){
+                if(!v.toDateTime().isValid())
+                    return v.toString();
+            }
+        }
+        default:
+            break;
+        }
+
         switch (Header::DataType(dataType)) {
         case Header::Integer:
             return fu.toInt(v);

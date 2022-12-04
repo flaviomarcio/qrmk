@@ -295,7 +295,13 @@ public:
                 switch (header->computeMode()) {
                 case Header::Count:
                 {
-                    value=vList.count();
+                    if(header->format().isEmpty())
+                        value=vList.count();
+                    else{
+                        auto vReplaceText=QString("${%1}").arg(header->field());
+                        auto vReplaceValue=QString::number(vList.count());
+                        value=header->format().replace(vReplaceText, vReplaceValue);
+                    }
                     break;
                 }
                 case Header::Sum:
@@ -317,7 +323,13 @@ public:
                             break;
                         }
                     }
-                    value=calc;
+                    if(header->format().isEmpty())
+                        value=calc;
+                    else{
+                        auto vReplaceText=QString("${%1}").arg(header->field());
+                        value=header->format().replace(vReplaceText, value.toString());
+                    }
+
                     break;
                 }
                 case Header::Avg:
@@ -356,9 +368,6 @@ public:
         QVariantList vSummaryRows;
         auto groupingCheck=[this, &vLastRow, &vSummaryRows, &writeSummary, &writeSingleLine](const QVariantHash &itemRow, bool lastSummary=false)//draw headers
         {
-
-
-
             Q_DECLARE_VU;
             QVariantHash vGroupRow;
             if(!lastSummary){
@@ -875,7 +884,13 @@ public:
                 switch (header->computeMode()) {
                 case Header::Count:
                 {
-                    value=vList.count();
+                    if(header->format().isEmpty())
+                        value=vList.count();
+                    else{
+                        auto vReplaceText=QString("${%1}").arg(header->field());
+                        auto vReplaceValue=QString::number(vList.count());
+                        value=header->format().replace(vReplaceText, vReplaceValue);
+                    }
                     break;
                 }
                 case Header::Sum:
@@ -897,7 +912,12 @@ public:
                             break;
                         }
                     }
-                    value=calc;
+                    if(header->format().isEmpty())
+                        value=calc;
+                    else{
+                        auto vReplaceText=QString("${%1}").arg(header->field());
+                        value=header->format().replace(vReplaceText, calc.toString());
+                    }
                     break;
                 }
                 case Header::Avg:
