@@ -127,63 +127,9 @@ public:
 
         QVariantHash itemRecord;
 
-        auto writeSingleLine=[this, &vList](const QVariant &outItem)//draw headers
+        auto writeSummary=[this, &vList/*, &writeSingleLine*/](const QVariantList &vSummaryList, int rowType, const QString &totalMessage)
         {
-            if(headersList.isEmpty())
-                return;
-
-            QStringList textLine;
-            switch (outItem.typeId()) {
-            case QMetaType::QVariantPair:
-            case QMetaType::QVariantHash:
-            case QMetaType::QVariantMap:
-            {
-                auto itemRow=outItem.toHash();
-                for(auto &header : headersList){
-                    auto value=itemRow.value(header->field());
-
-                    if(value.isNull() && !value.isValid())
-                        continue;
-
-                    auto valueText=header->toFormattedValue(value);
-                    static const auto __format=QString("%1: %2");
-                    if(!header->title().isEmpty() && !valueText.isEmpty())
-                        textLine.append(__format.arg(header->title(), valueText));
-                    else if(!header->title().isEmpty())
-                        textLine.append(header->title());
-                    else if(valueText.isEmpty())
-                        textLine.append(valueText);
-                }
-                break;
-            }
-            default:
-                Q_DECLARE_VU;
-                auto v=vu.toStr(outItem).trimmed();
-                if(!v.isEmpty())
-                    textLine.append(v);
-                break;
-            }
-
-//            if(textLine.isEmpty())
-//                return;
-
-
-            Header *header=headersList.first();
-            if(header==nullptr)
-                return;
-            static const auto __spacer=", ";
-
-
-            vList.append(QVariantHash{
-                             {__rowType,RowSingle},
-                             {__rowValue,textLine.join(__spacer)}
-                         });
-
-        };
-
-
-        auto writeSummary=[this, &vList, &writeSingleLine](const QVariantList &vSummaryList, int rowType, const QString &totalMessage)
-        {
+            Q_UNUSED(totalMessage)
             if(this->summary.isEmpty())
                 return false;
 
@@ -287,10 +233,10 @@ public:
 
                 auto vList=value.toList();
 
-                if(vList.isEmpty()){
-                    value={};
-                    continue;
-                }
+//                if(vList.isEmpty()){
+//                    value={};
+//                    continue;
+//                }
 
                 switch (header->computeMode()) {
                 case Header::Count:
@@ -355,7 +301,7 @@ public:
                 itemRowFormatted.insert(header->field(), value);
             }
 
-            writeSingleLine(totalMessage);
+            //writeSingleLine(totalMessage);
             vList.append(QVariantHash{
                              {__rowType, rowType},
                              {__rowValue,itemRowFormatted}
@@ -366,10 +312,13 @@ public:
 
         QVariantHash vLastRow;
         QVariantList vSummaryRows;
-        auto groupingCheck=[this, &vLastRow, &vSummaryRows, &writeSummary, &writeSingleLine](const QVariantHash &itemRow, bool lastSummary=false)//draw headers
+        auto groupingCheck=[this, &vLastRow, &vSummaryRows, &writeSummary/*, &writeSingleLine*/](const QVariantHash &itemRow, bool lastSummary=false)//draw headers
         {
             Q_DECLARE_VU;
             QVariantHash vGroupRow;
+            if(this->groupingFields.isEmpty())
+                return false;
+
             if(!lastSummary){
 
                 if(vLastRow.isEmpty()){//first call check
@@ -404,12 +353,9 @@ public:
             }
 
             writeSummary(vSummaryRows, RowSummary, __total);
-            writeSingleLine({});
-
             vLastRow=itemRow;
             vSummaryRows.clear();
             vSummaryRows.append(itemRow);//rows to group summary
-            writeSingleLine(vGroupRow);
             return true;
         };
 
@@ -418,12 +364,16 @@ public:
         {//write pages
             itemRecord=(this->items.isEmpty())?itemRecord:this->items.first().toHash();
             for(auto &item: this->items){
-                vList.append(QVariantHash{
-                                 {__rowType,RowValues},
-                                 {__rowValue,item}
-                             });
-                itemRecord=item.toHash();
-                groupingCheck(itemRecord);
+                auto vHash=item.toHash();
+                if(vHash.contains(__rowType) && vHash.contains(__rowValue)){
+                    vList.append(vHash);
+                    vHash=vHash.value(__rowValue).toHash();
+                }
+                else{
+                    auto v=QVariantHash{{__rowType,RowValues},{__rowValue,vHash}};
+                    vList.append(v);
+                }
+                groupingCheck(itemRecord=vHash);
             }
         }
 

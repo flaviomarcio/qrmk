@@ -60,6 +60,7 @@ public:
 
     enum ComputeMode{
           None
+        , Text
         , Count
         , Sum
         , Max
