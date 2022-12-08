@@ -38,6 +38,18 @@ public:
     explicit Maker(QObject *parent = nullptr);
 
     //!
+    //! \brief toHash
+    //! \return
+    //!
+    const QVariantHash toHash()const;
+
+    //!
+    //! \brief setValues
+    //! \param v
+    //!
+    Maker &setValues(const QVariant &v);
+
+    //!
     //! \brief make
     //! \param outFormat
     //! \return

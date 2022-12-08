@@ -25,9 +25,53 @@ static const auto __rowValue="__row_value__";
 static const auto __total=QObject::tr("Totalização");
 static const auto __totalFinal=QObject::tr("Totalização final");
 
+typedef QVector<QByteArray> PropertyNames;
+Q_GLOBAL_STATIC_WITH_ARGS(PropertyNames, staticIgnoreMethods,({"objectName","values","measures","asJson", "measures", "baseValues", "clearOnSetFail"}))
+
+const QVariantHash extractHash(const QObject *object, const QStringList &ignoreProperties)
+{
+    QVariantHash __return;
+    auto metaObject = object->metaObject();
+
+    for(int col = 0; col < metaObject->propertyCount(); ++col) {
+
+        auto property = metaObject->property(col);
+
+        auto name=QByteArray{property.name()};
+        if(ignoreProperties.contains(name))
+            continue;
+
+        if(!property.isReadable())
+            continue;
+
+        if(staticIgnoreMethods->contains(name))
+            continue;
+
+        auto value=property.read(object);
+
+        auto obj=value.value<QObject*>();
+        if(obj)
+            value = extractHash(obj, ignoreProperties);
+
+        switch (value.typeId()) {
+        case QMetaType::QUuid:
+            value=value.toUuid().toString();
+            break;
+        case QMetaType::QUrl:
+            value=value.toUrl().toString();
+            break;
+        default:
+            break;
+        }
+        __return.insert(property.name(), value);
+    }
+    return __return;
+}
+
 enum RowType{
     RowValues, RowSingle, RowSummary, RowSummaryFinal
 };
+
 
 class MakerPvt:public QObject{
 public:
@@ -1232,6 +1276,17 @@ Maker::Maker(QObject *parent)
     : QObject{parent}
 {
     this->p=new MakerPvt{this};
+}
+
+const QVariantHash Maker::toHash() const
+{
+    return extractHash(this,{});
+}
+
+Maker &Maker::setValues(const QVariant &v)
+{
+    Q_UNUSED(v)
+    return *this;
 }
 
 Maker &Maker::make(const OutFormat outFormat)
