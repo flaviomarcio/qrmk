@@ -6,6 +6,7 @@ QTREFORCE_QRMK=true
 DEFINES+=QTREFORCE_QRMK
 
 HEADERS += \
+    $$PWD/private/p_qrmk_maker.h \
     $$PWD/qrmk.h \
     $$PWD/qrmk_global.h \
     $$PWD/qrmk_maker.h \
@@ -15,6 +16,7 @@ HEADERS += \
     $$PWD/qrmk_signatures.h
 
 SOURCES += \
+    $$PWD/private/p_qrmk_maker.cpp \
     $$PWD/qrmk_maker.cpp \
     $$PWD/qrmk_header.cpp \
     $$PWD/qrmk_headers.cpp \

@@ -26,25 +26,30 @@ private:
         {
             Q_DECLARE_VU;
             QVariantList __return;
-            int iRows=150;
-            for(int day=1; day<=15; day++){
-                for(int i=1; i<=iRows; i++){
-                    QVariantHash v;
-                    int month=QDate::currentDate().month();
-                    int year=QDate::currentDate().year();
-                    auto dt=QDate{year, month, day};
+            int iRows=23;
+            for(int customer=1; customer<=10;customer++){
+                for(int day=1; day<=3; day++){
+                    for(int i=1; i<=iRows; i++){
+                        QVariantHash v;
+                        int month=QDate::currentDate().month();
+                        int year=QDate::currentDate().year();
+                        auto dt=QDate{year, month, day};
 
-                    v.insert("dt", dt);
-                    v.insert("document01","48816017000101");
-                    v.insert("document02","48816017000102");
-                    v.insert("document03","48816017000103");
-                    v.insert("uuid", vu.toUuid(dt));
-                    v.insert("name", "Name: "+QString::number(i).rightJustified(15,'0'));
-                    v.insert("value",(iRows+i/3));
-                    __return.append(v);
+                        v.insert("dt", dt);
+                        v.insert("document01","48816017000101");
+                        v.insert("document02","48816017000102");
+                        v.insert("document03","48816017000103");
+                        v.insert("uuid", vu.toUuid(dt));
+                        v.insert("customer_uuid", vu.toUuid(customer));
+                        v.insert("customer_name", "Name: "+QString::number(customer).rightJustified(15,'0'));
+                        v.insert("value",(iRows+i/3));
+                        __return.append(v);
+                    }
+                    iRows-=9;
                 }
-                iRows-=9;
             }
+
+
             return __return;
         };
 
@@ -64,11 +69,18 @@ private:
                     .visible(false);
 
             headers
-                    .header("name")
-                    .title("Name")
+                    .header("customer_uuid")
+                    .title("ID")
+                    .align(Header::Center)
+                    .dataType(Header::Uuid)
+                    .visible(false);
+
+            headers
+                    .header("customer_name")
+                    .title("Customer name")
                     .align(Header::Start)
                     .dataType(Header::String)
-                    .format("${uuid} - ${name}")
+                    .format("${uuid} - ${customer_name}")
                     .width("55%");
 
             headers
@@ -104,8 +116,8 @@ private:
         auto makeSummary=[](Headers &headers)
         {
             headers
-                    .header("name")
-                    .format("Registros ${name}")
+                    .header("customer_name")
+                    .format("Registros ${customer_name}")
                     .computeMode(Header::Count);
 
             headers
@@ -157,30 +169,31 @@ private:
             signatures
                     .signature("${document01}-One")
                     .documentType(Signature::CNPJ)
-                    .name("${name}");
+                    .name("${customer_name}");
 
             signatures
                     .signature("${document02}-Two")
                     .documentType(Signature::CNPJ)
-                    .name("${name}");
+                    .name("${customer_name}");
 
             signatures
                     .signature("${document03}-three")
                     .documentType(Signature::CNPJ)
-                    .name("${name}");
+                    .name("${customer_name}");
         };
 
 
         maker
                 .title("Report test 01")
-                .extraPageInfo({"${name}-${uuid}","${uuid}-${name}"})
+                .extraPageInfo({"${customer_name}-${uuid}","${uuid}-${customer_name}"})
                 .owner("Company test")
                 .items(makeItemsSimple())
                 .filters(makeFilters)
                 .headers(makeHeaders)
                 .summary(makeSummary)
                 .signature(makerSignature)
-                .groupingFields({"dt"})
+                .groupingFields({"dt","customer_uuid"})
+                .groupingFields({"dt","customer_name"})
                 ;
 
     }
