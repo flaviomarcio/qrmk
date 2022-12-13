@@ -26,10 +26,11 @@ private:
         {
             Q_DECLARE_VU;
             QVariantList __return;
-            int iRows=23;
-            for(int customer=1; customer<=10;customer++){
+            int LastRow=0;
+
+            for(int customerId=1; customerId<=10;customerId++){
                 for(int day=1; day<=3; day++){
-                    for(int i=1; i<=iRows; i++){
+                    for(int i=1; i<=23; i++){
                         QVariantHash v;
                         int month=QDate::currentDate().month();
                         int year=QDate::currentDate().year();
@@ -39,13 +40,12 @@ private:
                         v.insert("document01","48816017000101");
                         v.insert("document02","48816017000102");
                         v.insert("document03","48816017000103");
-                        v.insert("uuid", vu.toUuid(dt));
-                        v.insert("customer_uuid", vu.toUuid(customer));
-                        v.insert("customer_name", "Name: "+QString::number(customer).rightJustified(15,'0'));
-                        v.insert("value",(iRows+i/3));
+                        v.insert("uuid", vu.toUuid(LastRow++));
+                        v.insert("customer_uuid", vu.toUuid(customerId));
+                        v.insert("customer_name", "Name: "+QString::number(customerId).rightJustified(15,'0'));
+                        v.insert("value",((LastRow*1.5)+i/3));
                         __return.append(v);
                     }
-                    iRows-=9;
                 }
             }
 
