@@ -632,8 +632,7 @@ QString MakerPvt::printPDF()
     }
     rectFull=(rectFull.width()>0)?rectFull:QRect(0, 0, rowWidth, rowHeight);
 
-    int startY=0;
-
+    int startY=0, totalPageInfo=0;
     int rowCount=0, pageCount=0;
 
     auto nextY=[this, &startY, &rowCount](double factor=1)
@@ -644,7 +643,7 @@ QString MakerPvt::printPDF()
 
     FormattingUtil fu;
     const auto __time=tr("Emissão: %1 %2").arg(fu.v(QDate::currentDate()),fu.v(QTime::currentTime()));
-    auto writePageInfo=[this, __time, &itemRecord, &startY, &painter, &nextY, &pageCount]()//draw headers
+    auto writePageInfo=[this, __time, &itemRecord, &startY, &painter, &nextY, &totalPageInfo, &pageCount]()//draw headers
     {
         auto totalLinesInfo=2;//time+page
         totalLinesInfo+=this->extraPageInfo.count();
@@ -683,6 +682,7 @@ QString MakerPvt::printPDF()
         painter.setBrush(Qt::NoBrush);
         painter.setPen(Qt::black);
         painter.drawRect(rect);
+        totalPageInfo=rect.height();
     };
 
     auto writeColumns=[this, &nextY, &startY, &painter, &columnsHeaders]()//draw headers
@@ -835,7 +835,7 @@ QString MakerPvt::printPDF()
         pageStart();
     };
 
-    auto writeSignatures=[this, &nextY, &painter, &itemRecord, &startY, &pageBlank]()
+    auto writeSignatures=[this, &totalPageInfo, &nextY, &painter, &itemRecord, &startY, &pageBlank]()
     {
         if(this->signature.isEmpty())
             return;
@@ -853,7 +853,7 @@ QString MakerPvt::printPDF()
             pageBlank();
 
 
-        const auto rectSignature=QRect(0, nextY(2), this->rowWidth, this->totalHeight-startY);
+        const auto rectSignature=QRect(0, nextY(2), this->rowWidth, (this->totalHeight-(startY+totalPageInfo)));
 
         QRect rectTitle=QRect(0, nextY(0), rowWidth, rowHeight);
         if(!this->signature.title().isEmpty()){//title
@@ -1008,6 +1008,10 @@ QString MakerPvt::printPDF()
         default:
             break;
         }
+
+        if(vRecordList.isEmpty())
+            break;
+
         if((this->maxRows>0) && (this->maxRows<=++rowCount)){
             if(&item!=&this->items.last())
                 pageNew();
