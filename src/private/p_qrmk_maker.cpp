@@ -482,7 +482,11 @@ QByteArray MakerPvt::getExtension()
 QString MakerPvt::getFileName()
 {
     auto __format=QStringLiteral("%1.%2");
+#ifdef QT_DEBUG
+    return __format.arg("report", this->getExtension());
+#else
     return __format.arg(QUuid::createUuid().toString(), this->getExtension());
+#endif
 }
 
 
@@ -515,11 +519,17 @@ QString MakerPvt::printPDF()
     if(vRecordList.isEmpty())
         return {};
 
-
+#ifdef QT_DEBUG
+    auto file=QFile(getFileName());
+    if(!file.open(QFile::Truncate | QFile::WriteOnly | QFile::Unbuffered))
+        return {};
+#else
     auto file=QTemporaryFile(getFileName(), parent);
     file.setAutoRemove(false);
     if(!file.open())
         return {};
+
+#endif
 
     QPdfWriter pdfWriter(&file);
     pdfWriter.setPageSize(QPageSize::A4);
@@ -583,17 +593,20 @@ QString MakerPvt::printPDF()
 
         auto pointLine=QPoint{0,0};
         this->rowWidth=0;
+        QRect rect={};
+        double factor=1.2;
         for(auto header : this->headersList){
             double per=vu.toDouble(header->width());
             int w=(totalWidth*per);
             this->rowWidth+=w;
             int h=this->rowHeight;
-            auto rect=QRect{pointLine.x(), startY, w, h};
+            rect=QRect{pointLine.x(), startY, w, h};
             columnsRow.insert(header, rect);
-            rect=QRect{pointLine.x(), startY, w, int(h*1.2)};
+            rect=QRect{pointLine.x(), startY, w, int(h*factor)};
             columnsHeaders.insert(header, rect);
             pointLine.setX(startX+=w);
         }
+        rectSingleRow=QRect(0,0, startX, int(this->rowHeight*factor));
     }
     rectFull=(rectFull.width()>0)?rectFull:QRect(0, 0, rowWidth, rowHeight);
 
@@ -719,7 +732,7 @@ QString MakerPvt::printPDF()
         writeLine(itemRowFormatted);
     };
 
-    auto writeSingleLine=[this, &nextY, &startY, &painter](const QVariant &outItem)//draw headers
+    auto writeSingleLine=[this, &nextY, /*&startY, */&painter](const QVariant &outItem)//draw headers
     {
         if(headersList.isEmpty())
             return;
@@ -767,10 +780,17 @@ QString MakerPvt::printPDF()
         static const auto __spacer=", ";
 
         QRect boundingRect;
-        auto rectangle=QRect(rectFull.x(), startY, rectFull.width()-textOffSetB, rectFull.height()-textOffSetB);
+        auto rectangle=QRect(rectSingleRow.x(), nextY(1.2), rectSingleRow.width(), rectSingleRow.height());
+
+        painter.setBrush(Qt::lightGray);
+        painter.setPen(Qt::black);
+        painter.drawRect(rectangle);
+
         painter.setBrush(Qt::NoBrush);
         painter.setPen(Qt::black);
-        painter.drawText(rectangle, Qt::AlignJustify | Qt::AlignVCenter, textLine.join(__spacer), &boundingRect);
+        painter.drawText(rectangle, Qt::AlignHCenter | Qt::AlignVCenter, textLine.join(__spacer), &boundingRect);
+
+        nextY(0.4);
 
     };
 

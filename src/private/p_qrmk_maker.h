@@ -50,6 +50,7 @@ public:
     double rowHeight=0;
     QStringList extraPageInfo;
     QRect rectFull={};
+    QRect rectSingleRow={};
     QList<Header *> headersList;
 
     explicit MakerPvt(Maker *parent=nullptr);
