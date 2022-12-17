@@ -13,7 +13,13 @@ namespace QRmk{
 
 
 class MakerPvt:public QObject{
+    enum RowType{
+        RowNONE, RowPageInfo, RowHeader, RowValues, RowSingle, RowSummary, RowSummaryHeader, RowSummaryTotal, RowSignature
+    };
+
+    Q_ENUM(RowType)
 public:
+
     Q_DECLARE_VU;
     Maker*parent=nullptr;
     QStm::MetaEnum<Maker::Orientation> orientation=Maker::Portrait;

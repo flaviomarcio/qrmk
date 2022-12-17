@@ -1,11 +1,8 @@
 #include "./p_qrmk_maker.h"
 #include "../qstm/src/qstm_util_formatting.h"
+#include "../qstm/src/qstm_meta_enum.h"
 
 namespace QRmk{
-
-enum RowType{
-    RowValues, RowSingle, RowSummary, RowSummaryFinal
-};
 
 static const auto extPDF="pdf";
 static const auto extCSV="csv";
@@ -81,8 +78,6 @@ void MakerPvt::clean()
     this->items.clear();
 }
 
-
-
 void MakerPvt::clear()
 {
     this->outFileName.clear();
@@ -98,8 +93,6 @@ void MakerPvt::clear()
     this->summary.clear();
 }
 
-
-
 void MakerPvt::prepare()
 {
     this->headersList.clear();
@@ -109,19 +102,15 @@ void MakerPvt::prepare()
     }
 
     for(auto &header:this->summary.list()){
-        if(header->dataType()==Header::Auto){
-            if(this->headers.contains(header->field())){
-                const auto &h=this->headers.header(header->field());
-                header->dataType(h.dataType());
-            }
-        }
+        if(header->dataType()!=Header::Auto)
+            return;
+        if(!this->headers.contains(header->field()))
+            return;
+        const auto &h=this->headers.header(header->field());
+        header->dataType(h.dataType());
     }
-
     this->maxRows=(maxRows>0)?maxRows:this->getLines();
-
 }
-
-
 
 int MakerPvt::getLines()
 {
@@ -135,17 +124,45 @@ int MakerPvt::getLines()
     }
 }
 
-
-
 QVariantList MakerPvt::makeRecords()
 {
+    if(this->items.isEmpty())
+        return {};
+
     QVariantList vList;
 
     QVariantHash itemRecord;
 
-    auto writeSummary=[this, &vList/*, &writeSingleLine*/](const QVariantList &vSummaryList, int rowType, const QString &totalMessage)
+    RowType lastRowType;
+
+    auto writeLine=[&vList, &lastRowType](const RowType rowType, const QVariant &rowValue){
+        vList.append(QVariantHash{{__rowType, rowType}, {__rowValue,rowValue}});
+        lastRowType=rowType;
+    };
+    auto writeColumns=[&writeLine, &lastRowType](RowType rowType=RowHeader)//draw headers
     {
-        Q_UNUSED(totalMessage)
+        if(lastRowType==rowType)
+            return;
+        writeLine(rowType, {});
+    };
+    auto writeSingleLine=[&writeLine](const QVariant &outItem)//draw headers
+    {
+        writeLine(RowSingle, outItem);
+    };
+    auto pageStart=[&writeLine, &writeColumns](const QVariant &itemRecord){
+        writeLine(RowPageInfo,itemRecord);
+        writeColumns();
+    };
+    auto writeReportValues=[&writeLine](const QVariantHash &itemRecord)//draw headers
+    {
+        writeLine(RowValues, itemRecord);
+    };
+    auto writeSummary=[this, &writeLine, &writeSingleLine, &writeColumns](const QVariantList &vSummaryList, RowType rowType, const QString &totalMessage)
+    {
+        Q_UNUSED(rowType)
+
+        static const auto __P1=QString("${%1}");
+
         if(this->summary.isEmpty())
             return false;
 
@@ -205,12 +222,29 @@ QVariantList MakerPvt::makeRecords()
             }
         };
 
-        QVariantHash itemSummary;
+        auto getGroup=[this](const QVariantHash &itemRecord){
+            if(this->groupingFields.isEmpty())
+                return QByteArray{};
+            QStringList values;
+            for(auto&headerName:this->groupingFields){
+                if(!this->headers.contains(headerName))
+                    continue;
+                const auto &header=this->headers.header(headerName);
+                auto value=this->vu.toByteArray(itemRecord.value(header.field()));
+                values.append(value);
+            }
+            auto __return=this->vu.toMd5(values);
+            return this->vu.toMd5(__return);
+        };
+
+        QHash<QString, QVariantHash> itemGrouping;
+
         for(auto &item: vSummaryList){
             auto itemRecord=item.toHash();
             QVariant value;
             for(auto &header:this->summary.list()){
-
+                auto groupKey=getGroup(itemRecord);
+                auto &itemSummary=itemGrouping[groupKey];
                 auto itemSummaryValue=itemRecord.value(header->field());
                 if(itemSummaryValue.isNull() || !itemSummaryValue.isValid())
                     continue;
@@ -244,91 +278,98 @@ QVariantList MakerPvt::makeRecords()
         }
 
 
-        for(auto &header:this->summary.list()){
-            auto &value=itemSummary[header->field()];
+        {//summary grouping
+            auto groups=itemGrouping.keys();
+            for(auto&group:groups){
+                auto &itemSummary=itemGrouping[group];
+                for(auto &header:this->summary.list()){
 
-            auto vList=value.toList();
+                    auto &value=itemSummary[header->field()];
 
-            //                if(vList.isEmpty()){
-            //                    value={};
-            //                    continue;
-            //                }
+                    auto vGroupedList=value.toList();
 
-            switch (header->computeMode()) {
-            case Header::Count:
-            {
-                if(header->format().isEmpty())
-                    value=vList.count();
-                else{
-                    auto vReplaceText=QString("${%1}").arg(header->field());
-                    auto vReplaceValue=QString::number(vList.count());
-                    value=header->format().replace(vReplaceText, vReplaceValue);
-                }
-                break;
-            }
-            case Header::Sum:
-            case Header::Max:
-            case Header::Min:
-            {
-                QVariant calc;
-                for(auto&v:vList){
                     switch (header->computeMode()) {
+                    case Header::Count:
+                    {
+                        if(header->format().isEmpty())
+                            value=vGroupedList.count();
+                        else{
+                            auto vReplaceText=__P1.arg(header->field());
+                            auto vReplaceValue=QString::number(vGroupedList.count());
+                            value=header->format().replace(vReplaceText, vReplaceValue);
+                        }
+                        break;
+                    }
                     case Header::Sum:
-                        calc=calc.toDouble()+vu.toDouble(v);
-                        break;
                     case Header::Max:
-                        calc=checkMajor(header, calc, v);
-                        break;
                     case Header::Min:
-                        calc=checkMinor(header, calc, v);
+                    {
+                        QVariant calc;
+                        for(auto&v:vGroupedList){
+                            switch (header->computeMode()) {
+                            case Header::Sum:
+                                calc=calc.toDouble()+vu.toDouble(v);
+                                break;
+                            case Header::Max:
+                                calc=checkMajor(header, calc, v);
+                                break;
+                            case Header::Min:
+                                calc=checkMinor(header, calc, v);
+                            default:
+                                break;
+                            }
+                        }
+                        if(header->format().isEmpty())
+                            value=calc;
+                        else{
+                            auto vReplaceText=__P1.arg(header->field());
+                            value=header->format().replace(vReplaceText, value.toString());
+                        }
+
+                        break;
+                    }
+                    case Header::Avg:
+                    {
+                        double calc=0;
+                        for(auto&v:vGroupedList){
+                            calc+=vu.toDouble(v);
+                            break;
+                        }
+                        value=calc/vGroupedList.count();
+                        break;
+                    }
                     default:
+                        value={};
                         break;
                     }
                 }
-                if(header->format().isEmpty())
-                    value=calc;
-                else{
-                    auto vReplaceText=QString("${%1}").arg(header->field());
-                    value=header->format().replace(vReplaceText, value.toString());
-                }
 
-                break;
-            }
-            case Header::Avg:
-            {
-                double calc=0;
-                for(auto&v:vList){
-                    calc+=vu.toDouble(v);
-                    break;
-                }
-                value=calc/vList.count();
-                break;
-            }
-            default:
-                value={};
-                break;
             }
         }
 
-        QVariantHash itemRowFormatted;
-        for(auto &header : this->summary.list()){
-            auto value=itemSummary.value(header->field());
-            value=header->toFormattedValue(value);
-            itemRowFormatted.insert(header->field(), value);
+        if(!totalMessage.trimmed().isEmpty())
+            writeSingleLine(totalMessage);
+        writeColumns();
+        {//write grouping summary
+            auto groups=itemGrouping.keys();
+            groups.sort();
+            for(auto&group:groups){
+                QVariantHash itemRowFormatted;
+                auto &itemSummary=itemGrouping[group];
+                for(auto &header : this->summary.list()){
+                    auto value=itemSummary.value(header->field());
+                    value=header->toFormattedValue(value);
+                    itemRowFormatted.insert(header->field(), value);
+                }
+                writeLine(RowValues, itemRowFormatted);
+            }
         }
-
-        //writeSingleLine(totalMessage);
-        vList.append(QVariantHash{
-                         {__rowType, rowType},
-                         {__rowValue,itemRowFormatted}
-                     });
         return true;
     };
 
-
     QVariantHash vLastRow;
     QVariantList vSummaryRows;
-    auto groupingCheck=[this, &vLastRow, &vSummaryRows, &writeSummary/*, &writeSingleLine*/](const QVariantHash &itemRow, bool lastSummary=false)//draw headers
+    auto groupingCheck=[this, &vLastRow, &vSummaryRows, &writeColumns, &writeSummary, &writeSingleLine](const QVariantHash &itemRow, bool lastSummary=false)//draw headers
     {
         Q_DECLARE_VU;
         QVariantHash vGroupRow;
@@ -368,35 +409,40 @@ QVariantList MakerPvt::makeRecords()
             }
         }
 
-        writeSummary(vSummaryRows, RowSummary, __total);
+        writeSummary(vSummaryRows, RowSummary, {}/*__total*/);
         vLastRow=itemRow;
         vSummaryRows.clear();
         vSummaryRows.append(itemRow);//rows to group summary
+        writeSingleLine(vGroupRow);
+        writeColumns();
         return true;
     };
 
-
+    auto writeSignatures=[this, &writeLine, &itemRecord]()
+    {
+        if(this->signature.isEmpty())
+            return;
+        writeLine(RowSignature, itemRecord);
+    };
 
     {//write pages
         itemRecord=(this->items.isEmpty())?itemRecord:this->items.first().toHash();
+        pageStart(itemRecord);
         for(auto &item: this->items){
             auto vHash=item.toHash();
             if(vHash.contains(__rowType) && vHash.contains(__rowValue)){
                 vList.append(vHash);
                 vHash=vHash.value(__rowValue).toHash();
             }
-            else{
-                auto v=QVariantHash{{__rowType,RowValues},{__rowValue,vHash}};
-                vList.append(v);
-            }
             groupingCheck(itemRecord=vHash);
+            writeReportValues(vHash);
         }
     }
 
     groupingCheck({},true);
 
-
-    writeSummary(this->items, RowSummaryFinal, __totalFinal);
+    writeSummary(this->items, RowSummaryTotal, __totalFinal);
+    writeSignatures();
 
     return vList;
 }
@@ -464,6 +510,11 @@ QString MakerPvt::parserString(const QString &text, const QVariantHash &itemReco
 
 QString MakerPvt::printPDF()
 {
+    auto vRecordList=this->makeRecords();
+
+    if(vRecordList.isEmpty())
+        return {};
+
 
     auto file=QTemporaryFile(getFileName(), parent);
     file.setAutoRemove(false);
@@ -504,9 +555,6 @@ QString MakerPvt::printPDF()
     this->maxRows=(maxRows>0)?maxRows:this->getLines();
 
     QHash<Header*, QRect> columnsRow, columnsHeaders;
-
-
-
 
     {//calc columns rectangle
 
@@ -651,19 +699,19 @@ QString MakerPvt::printPDF()
         }
     };
 
-    auto writeReportLine=[this, &itemRecord, &writeLine](const QVariantHash &itemRow)//draw headers
+    auto writeReportValues=[this, &writeLine](const QVariantHash &itemRecord)//draw headers
     {
         QVariantHash itemRowFormatted;
         for(auto &header : headersList){
-            auto value=itemRow.value(header->field());
+            auto value=itemRecord.value(header->field());
 
             if(value.isValid())
                 value=header->toFormattedValue(value);
 
             if(!header->format().isEmpty())
-                value=this->parserString(header->format(),itemRecord);
+                value=this->parserString(header->format(), itemRecord);
             else
-                value=this->parserString(value.toString(),itemRecord);
+                value=this->parserString(value.toString(), itemRecord);
 
             itemRowFormatted.insert(header->field(), value);
 
@@ -675,7 +723,7 @@ QString MakerPvt::printPDF()
     {
         if(headersList.isEmpty())
             return;
-        nextY();
+        nextY(1.5);
         painter.setFont(fontBold);
         QStringList textLine;
         switch (outItem.typeId()) {
@@ -726,10 +774,11 @@ QString MakerPvt::printPDF()
 
     };
 
-    auto pageStart=[&rowCount, &writeColumns, &writePageInfo]()
+    auto pageStart=[&rowCount, &vRecordList, &writeColumns, &writePageInfo]()
     {
         rowCount=0;
         writePageInfo();
+        if(!vRecordList.isEmpty())
         writeColumns();
     };
 
@@ -745,239 +794,6 @@ QString MakerPvt::printPDF()
         pdfWriter.newPage();
         pageStart();
     };
-
-    auto writeSummary=[this, &writeColumns, &writeSingleLine, &writeLine](const QVariantList &vList, const QString &totalMessage)
-    {
-        if(this->summary.isEmpty())
-            return false;
-
-        Q_DECLARE_VU;
-
-        auto checkMajor=[&vu](const Header *header, const QVariant &currentValue, const QVariant &newValue){
-            if(currentValue.isNull() || !currentValue.isValid())
-                return newValue;
-
-            switch (header->dataType()) {
-            case Header::Double:
-            case Header::Integer:
-            case Header::Number:
-            case Header::Currency:{
-                auto v0=vu.toDouble(currentValue);
-                auto v1=vu.toDouble(currentValue);
-                QVariant v=(v0<v1)?v1:v0;
-                return v;
-            }
-            case Header::Date:
-            case Header::DateTime:
-            {
-                auto v0=vu.toDateTime(currentValue);
-                auto v1=vu.toDateTime(currentValue);
-                QVariant v=(v0<v1)?v1:v0;
-                return v;
-            }
-            default:
-                return currentValue;
-            }
-        };
-
-        auto checkMinor=[&vu](const Header *header, const QVariant &currentValue, const QVariant &newValue){
-            if(currentValue.isNull() || !currentValue.isValid())
-                return newValue;
-
-            switch (header->dataType()) {
-            case Header::Double:
-            case Header::Integer:
-            case Header::Number:
-            case Header::Currency:{
-                auto v0=vu.toDouble(currentValue);
-                auto v1=vu.toDouble(currentValue);
-                QVariant v=(v0<v1)?v1:v0;
-                return v;
-            }
-            case Header::Date:
-            case Header::DateTime:
-            {
-                auto v0=vu.toDateTime(currentValue);
-                auto v1=vu.toDateTime(currentValue);
-                QVariant v=(v0<v1)?v1:v0;
-                return v;
-            }
-            default:
-                return currentValue;
-            }
-        };
-
-        QVariantHash itemSummary;
-        for(auto &item: vList){
-            auto itemRecord=item.toHash();
-            QVariant value;
-            for(auto &header:this->summary.list()){
-
-                auto itemSummaryValue=itemRecord.value(header->field());
-                if(itemSummaryValue.isNull() || !itemSummaryValue.isValid())
-                    continue;
-
-                auto list=itemSummary.value(header->field()).toList();
-
-                switch (header->computeMode()) {
-                case Header::Count:
-                {
-                    if(!list.contains(itemSummaryValue))
-                        list.append(itemSummaryValue);
-                    value=list;
-                    break;
-                }
-                case Header::Sum:
-                case Header::Max:
-                case Header::Min:
-                case Header::Avg:
-                {
-                    list.append(itemSummaryValue);
-                    value=list;
-                    break;
-                }
-                default:
-                    value={};
-                    break;
-                }
-                if(value.isValid() && !value.isNull())
-                    itemSummary.insert(header->field(), value);
-            }
-        }
-
-
-        for(auto &header:this->summary.list()){
-            auto &value=itemSummary[header->field()];
-
-            auto vList=value.toList();
-
-            if(vList.isEmpty()){
-                value={};
-                continue;
-            }
-
-            switch (header->computeMode()) {
-            case Header::Count:
-            {
-                if(header->format().isEmpty())
-                    value=vList.count();
-                else{
-                    auto vReplaceText=QString("${%1}").arg(header->field());
-                    auto vReplaceValue=QString::number(vList.count());
-                    value=header->format().replace(vReplaceText, vReplaceValue);
-                }
-                break;
-            }
-            case Header::Sum:
-            case Header::Max:
-            case Header::Min:
-            {
-                QVariant calc;
-                for(auto&v:vList){
-                    switch (header->computeMode()) {
-                    case Header::Sum:
-                        calc=calc.toDouble()+vu.toDouble(v);
-                        break;
-                    case Header::Max:
-                        calc=checkMajor(header, calc, v);
-                        break;
-                    case Header::Min:
-                        calc=checkMinor(header, calc, v);
-                    default:
-                        break;
-                    }
-                }
-                if(header->format().isEmpty())
-                    value=calc;
-                else{
-                    auto vReplaceText=QString("${%1}").arg(header->field());
-                    value=header->format().replace(vReplaceText, calc.toString());
-                }
-                break;
-            }
-            case Header::Avg:
-            {
-                double calc=0;
-                for(auto&v:vList){
-                    calc+=vu.toDouble(v);
-                    break;
-                }
-                value=calc/vList.count();
-                break;
-            }
-            default:
-                value={};
-                break;
-            }
-        }
-
-        QVariantHash itemRowFormatted;
-        for(auto &header : this->summary.list()){
-            auto value=itemSummary.value(header->field());
-            value=header->toFormattedValue(value);
-            itemRowFormatted.insert(header->field(), value);
-        }
-
-        writeSingleLine(totalMessage);
-        writeColumns();
-        writeLine(itemRowFormatted);
-        return true;
-    };
-
-
-    QVariantHash vLastRow;
-    QVariantList vSummaryRows;
-    auto groupingCheck=[this, &nextY, &vLastRow, &vSummaryRows, &writeSingleLine, &writeSummary](const QVariantHash &itemRow, bool lastSummary=false)//draw headers
-    {
-
-
-
-        Q_DECLARE_VU;
-        QVariantHash vGroupRow;
-        if(!lastSummary){
-
-            if(vLastRow.isEmpty()){//first call check
-                vLastRow=itemRow;
-                vSummaryRows.append(itemRow);//rows to group summary
-                return false;
-            }
-
-            {
-                //new group check
-                for(auto&headerName:this->groupingFields){
-                    if(!this->headers.contains(headerName))
-                        continue;
-
-                    const auto &header=this->headers.header(headerName);
-
-                    vGroupRow.insert(header.field(), itemRow.value(header.field()));
-
-                    auto v0=vu.toByteArray(itemRow.value(header.field()));
-                    auto v1=vu.toByteArray(vLastRow.value(header.field()));
-                    if(v0==v1)
-                        continue;
-
-                    vLastRow={};//clear for summary and grouping
-                }
-            }
-
-            if(!vLastRow.isEmpty()){
-                vSummaryRows.append(itemRow);//rows to group summary
-                return false;
-            }
-        }
-
-        writeSummary(vSummaryRows, __total);
-
-        vLastRow=itemRow;
-        vSummaryRows.clear();
-        vSummaryRows.append(itemRow);//rows to group summary
-
-        nextY(0.5);
-        writeSingleLine(vGroupRow);
-        return true;
-    };
-
 
     auto writeSignatures=[this, &nextY, &painter, &itemRecord, &startY, &pageBlank]()
     {
@@ -1041,21 +857,21 @@ QString MakerPvt::printPDF()
 
 
                 /*
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            QTextDocument doc;
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            doc.setPageSize(rect.size());
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            doc.setHtml(declaration);
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            doc.setDefaultFont(font);
+                QTextDocument doc;
+                doc.setPageSize(rect.size());
+                doc.setHtml(declaration);
+                doc.setDefaultFont(font);
 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            auto layout = doc.documentLayout();
+                auto layout = doc.documentLayout();
 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            QAbstractTextDocumentLayout::PaintContext context;
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            context.palette.setColor( QPalette::Text, painter.pen().color() );
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            painter.save();
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            painter.translate( rect.x(), rect.y() );
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            layout->draw(&painter, context );
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            painter.restore();
+                QAbstractTextDocumentLayout::PaintContext context;
+                context.palette.setColor( QPalette::Text, painter.pen().color() );
+                painter.save();
+                painter.translate( rect.x(), rect.y() );
+                layout->draw(&painter, context );
+                painter.restore();
 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        */
+                */
                 //doc.drawContents(&painter, rect);
                 startY=rect.y()+rect.height();
             }
@@ -1131,25 +947,66 @@ QString MakerPvt::printPDF()
 
     };
 
-
-    {//write pages
-        itemRecord=(this->items.isEmpty())?itemRecord:this->items.first().toHash();
-        pageStart();
-        for(auto &item: this->items){
-            itemRecord=item.toHash();
-            if(groupingCheck(itemRecord))
+    RowType lastRowType=RowNONE;
+    while(!vRecordList.isEmpty()){
+        auto item=vRecordList.takeFirst();
+        auto vHash=item.toHash();
+        auto itemValue=vHash.value(__rowValue);
+        auto itemRecord=itemValue.toHash();
+        QStm::MetaEnum<RowType> rowType=vHash.value(__rowType);
+        switch (rowType.type()) {
+        case RowPageInfo:
+            writePageInfo();
+            break;
+        case RowHeader:{
+            if(!rowType.equal(lastRowType))
                 writeColumns();
-            writeReportLine(itemRecord);
-            if((this->maxRows>0) && (this->maxRows<=++rowCount)){
-                if(&item!=&this->items.last())
-                    pageNew();
-            }
+            break;
         }
+        case RowValues:
+            writeReportValues(itemRecord);
+            break;
+        case RowSingle:
+            writeSingleLine(itemValue);
+            break;
+        case RowSummary:
+            writeReportValues(itemRecord);
+            break;
+        case RowSummaryHeader:
+            writeColumns();
+            break;
+        case RowSummaryTotal:
+            writeReportValues(itemRecord);
+            break;
+        case RowSignature:
+            writeSignatures();
+            break;
+        default:
+            break;
+        }
+        if((this->maxRows>0) && (this->maxRows<=++rowCount)){
+            if(&item!=&this->items.last())
+                pageNew();
+        }
+        lastRowType=rowType.type();
     }
 
-    groupingCheck({},true);
-
-    writeSummary(this->items, __totalFinal);
+//    {//write pages
+//        itemRecord=(this->items.isEmpty())?itemRecord:this->items.first().toHash();
+//        pageStart();
+//        for(auto &item: this->items){
+//            itemRecord=item.toHash();
+//            if(groupingCheck(itemRecord))
+//                writeColumns();
+//            writeReportValues(itemRecord);
+//            if((this->maxRows>0) && (this->maxRows<=++rowCount)){
+//                if(&item!=&this->items.last())
+//                    pageNew();
+//            }
+//        }
+//    }
+//    groupingCheck({},true);
+//    writeSummary(this->items, __totalFinal);
 
     writeSignatures();
     painter.end();

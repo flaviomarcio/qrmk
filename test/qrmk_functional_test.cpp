@@ -5,6 +5,7 @@
 #include <QTime>
 #include <QDateTime>
 #include <QFile>
+#include <QJsonDocument>
 #include "./qrmk_test_unit.h"
 #include "../src/qrmk.h"
 #include "../qstm/src/qstm_util_variant.h"
@@ -29,8 +30,8 @@ private:
             int LastRow=0;
 
             for(int customerId=1; customerId<=10;customerId++){
-                for(int day=1; day<=3; day++){
-                    for(int i=1; i<=23; i++){
+                for(int day=1; day<=10; day++){
+                    for(int i=1; i<=1; i++){
                         QVariantHash v;
                         int month=QDate::currentDate().month();
                         int year=QDate::currentDate().year();
@@ -121,10 +122,6 @@ private:
                     .computeMode(Header::Count);
 
             headers
-                    .header("dt")
-                    .computeMode(Header::Max);
-
-            headers
                     .header("value")
                     .computeMode(Header::Sum);
         };
@@ -192,8 +189,8 @@ private:
                 .headers(makeHeaders)
                 .summary(makeSummary)
                 .signature(makerSignature)
-                .groupingFields({"dt","customer_uuid"})
-                .groupingFields({"dt","customer_name"})
+                .groupingFields({"customer_uuid"})
+                .groupingDisplay({"customer_name"})
                 ;
 
     }
@@ -211,6 +208,14 @@ TEST_F(ERP_Request_Report_Test_V1, reportSimple)
 TEST_F(ERP_Request_Report_Test_V1, reportRecords)
 {
     auto vList=maker.makeRecords();
+
+    QFile file(QString("%1.json").arg(__func__));
+    file.open(QFile::Truncate | QFile::WriteOnly);
+    file.write(QJsonDocument::fromVariant(vList).toJson(QJsonDocument::Indented));
+    file.flush();
+    file.close();
+
+
     EXPECT_TRUE(!vList.isEmpty())<<"failure: maker.makeRecords()";
 }
 
