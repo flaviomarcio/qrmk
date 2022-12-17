@@ -10,6 +10,7 @@ static const auto extTXT="txt";
 
 static const auto sepCSV=";";
 static const auto sepTXT="|";
+static const auto __spaceJoin=", ";
 
 static const auto __rowType="__row_type__";
 static const auto __rowValue="__row_value__";
@@ -303,10 +304,10 @@ QVariantList MakerPvt::makeRecords()
                         else if(vGroupedList.size()==1)
                             value=vGroupedList.first().toString();
                         else{
-                            auto vList=value.toStringList();
-                            auto vReplaceText=__P1.arg(header->field());
-                            auto vReplaceValue=QString::number(vGroupedList.count());
-                            value=header->format().replace(vReplaceText, vReplaceValue);
+                            auto vList=value.toStringList().join(__spaceJoin);
+//                            auto vReplaceText=__P1.arg(header->field());
+//                            auto vReplaceValue=QString::number(vGroupedList.count());
+//                            value=header->format().replace(vReplaceText, vReplaceValue);
                         }
                         break;
                     }
@@ -798,7 +799,6 @@ QString MakerPvt::printPDF()
         Header *header=headersList.first();
         if(header==nullptr)
             return;
-        static const auto __spacer=", ";
 
         QRect boundingRect;
         auto rectangle=QRect(rectSingleRow.x(), nextY(1.2), rectSingleRow.width(), rectSingleRow.height());
@@ -809,9 +809,9 @@ QString MakerPvt::printPDF()
 
         painter.setBrush(Qt::NoBrush);
         painter.setPen(Qt::black);
-        painter.drawText(rectangle, Qt::AlignHCenter | Qt::AlignVCenter, textLine.join(__spacer), &boundingRect);
+        painter.drawText(rectangle, Qt::AlignHCenter | Qt::AlignVCenter, textLine.join(__spaceJoin), &boundingRect);
 
-        nextY(0.4);
+        nextY(0.2);
 
     };
 
