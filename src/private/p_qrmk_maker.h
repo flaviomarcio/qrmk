@@ -14,7 +14,7 @@ namespace QRmk{
 
 class MakerPvt:public QObject{
     enum RowType{
-        RowNONE, RowPageInfo, RowHeader, RowValues, RowSingle, RowSummary, RowSummaryHeader, RowSummaryTotal, RowSignature
+        RowNONE, RowPageInfo, RowHeader, RowValues, RowSingle, RowSummaryGrouping, RowSummaryHeader, RowSummaryTotal, RowSignature
     };
 
     Q_ENUM(RowType)

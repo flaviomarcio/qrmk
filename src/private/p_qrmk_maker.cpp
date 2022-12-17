@@ -303,12 +303,8 @@ QVariantList MakerPvt::makeRecords()
                             value={};
                         else if(vGroupedList.size()==1)
                             value=vGroupedList.first().toString();
-                        else{
-                            auto vList=value.toStringList().join(__spaceJoin);
-//                            auto vReplaceText=__P1.arg(header->field());
-//                            auto vReplaceValue=QString::number(vGroupedList.count());
-//                            value=header->format().replace(vReplaceText, vReplaceValue);
-                        }
+                        else
+                            value=value.toStringList().join(__spaceJoin);
                         break;
                     }
                     case Header::Count:
@@ -431,7 +427,7 @@ QVariantList MakerPvt::makeRecords()
             }
         }
 
-        writeSummary(vSummaryRows, RowSummary, {}/*__total*/);
+        writeSummary(vSummaryRows, RowSummaryGrouping, {}/*__total*/);
         vLastRow=itemRow;
         vSummaryRows.clear();
         vSummaryRows.append(itemRow);//rows to group summary
@@ -993,7 +989,7 @@ QString MakerPvt::printPDF()
         case RowSingle:
             writeSingleLine(itemValue);
             break;
-        case RowSummary:
+        case RowSummaryGrouping:
             writeReportValues(itemRecord);
             break;
         case RowSummaryHeader:
