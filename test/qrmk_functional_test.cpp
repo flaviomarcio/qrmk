@@ -118,8 +118,8 @@ private:
         {
             headers
                     .header("customer_name")
-                    .format("Registros ${customer_name}")
-                    .computeMode(Header::Count);
+                    .format("${customer_name}")
+                    .computeMode(Header::Text);
 
             headers
                     .header("value")

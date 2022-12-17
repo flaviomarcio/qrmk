@@ -252,6 +252,13 @@ QVariantList MakerPvt::makeRecords()
                 auto list=itemSummary.value(header->field()).toList();
 
                 switch (header->computeMode()) {
+                case Header::Text:
+                {
+                    if(!list.contains(itemSummaryValue))
+                        list.append(itemSummaryValue);
+                    value=list;
+                    break;
+                }
                 case Header::Count:
                 {
                     if(!list.contains(itemSummaryValue))
@@ -289,6 +296,20 @@ QVariantList MakerPvt::makeRecords()
                     auto vGroupedList=value.toList();
 
                     switch (header->computeMode()) {
+                    case Header::Text:
+                    {
+                        if(vGroupedList.isEmpty())
+                            value={};
+                        else if(vGroupedList.size()==1)
+                            value=vGroupedList.first().toString();
+                        else{
+                            auto vList=value.toStringList();
+                            auto vReplaceText=__P1.arg(header->field());
+                            auto vReplaceValue=QString::number(vGroupedList.count());
+                            value=header->format().replace(vReplaceText, vReplaceValue);
+                        }
+                        break;
+                    }
                     case Header::Count:
                     {
                         if(header->format().isEmpty())
