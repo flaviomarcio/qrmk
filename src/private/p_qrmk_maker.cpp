@@ -774,19 +774,18 @@ QString MakerPvt::printPDF()
 
     };
 
+    auto pageBlank=[&pdfWriter, &writePageInfo]()
+    {
+        pdfWriter.newPage();
+        writePageInfo();
+    };
+
     auto pageStart=[&rowCount, &vRecordList, &writeColumns, &writePageInfo]()
     {
         rowCount=0;
         writePageInfo();
         if(!vRecordList.isEmpty())
-        writeColumns();
-    };
-
-    auto pageBlank=[&pdfWriter, &rowCount, &writePageInfo]()
-    {
-        pdfWriter.newPage();
-        rowCount=0;
-        writePageInfo();
+            writeColumns();
     };
 
     auto pageNew=[&pdfWriter, &pageStart]()
@@ -809,8 +808,11 @@ QString MakerPvt::printPDF()
                 pageBlank();
         }
 
-        const auto rectSignature=QRect(0, nextY(2), this->rowWidth, this->totalHeight-startY);
+        if((areaCurH+areaCurH)>1.00)
+            pageBlank();
 
+
+        const auto rectSignature=QRect(0, nextY(2), this->rowWidth, this->totalHeight-startY);
 
         QRect rectTitle=QRect(0, nextY(0), rowWidth, rowHeight);
         if(!this->signature.title().isEmpty()){//title
@@ -854,25 +856,6 @@ QString MakerPvt::printPDF()
                 rect=QRect(rect.x()+textOffSetL, rect.y()+textOffSetT, rect.width()-textOffSetR, rect.height()-textOffSetB);
                 QRect boundingRect;
                 painter.drawText(rect, Qt::AlignLeft | Qt::AlignVCenter | Qt::AlignJustify | Qt::TextWordWrap, declaration, &boundingRect);
-
-
-                /*
-                QTextDocument doc;
-                doc.setPageSize(rect.size());
-                doc.setHtml(declaration);
-                doc.setDefaultFont(font);
-
-                auto layout = doc.documentLayout();
-
-                QAbstractTextDocumentLayout::PaintContext context;
-                context.palette.setColor( QPalette::Text, painter.pen().color() );
-                painter.save();
-                painter.translate( rect.x(), rect.y() );
-                layout->draw(&painter, context );
-                painter.restore();
-
-                */
-                //doc.drawContents(&painter, rect);
                 startY=rect.y()+rect.height();
             }
         }
@@ -991,24 +974,6 @@ QString MakerPvt::printPDF()
         lastRowType=rowType.type();
     }
 
-//    {//write pages
-//        itemRecord=(this->items.isEmpty())?itemRecord:this->items.first().toHash();
-//        pageStart();
-//        for(auto &item: this->items){
-//            itemRecord=item.toHash();
-//            if(groupingCheck(itemRecord))
-//                writeColumns();
-//            writeReportValues(itemRecord);
-//            if((this->maxRows>0) && (this->maxRows<=++rowCount)){
-//                if(&item!=&this->items.last())
-//                    pageNew();
-//            }
-//        }
-//    }
-//    groupingCheck({},true);
-//    writeSummary(this->items, __totalFinal);
-
-    writeSignatures();
     painter.end();
 
     auto __return=file.fileName();
