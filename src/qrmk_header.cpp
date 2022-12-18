@@ -86,9 +86,16 @@ Header::Header(QObject *parent)
 const QString Header::toFormattedValue(const QVariant &v)
 {
     Q_DECLARE_FU;
+    QString __return;
     if(p->dataType.equal(Auto))
-        return fu.v(v);
-    return p->toFormatted(v, int(this->dataType()));
+        __return=fu.v(v);
+    else
+        __return=p->toFormatted(v, int(this->dataType()));
+
+    if(!this->format().isEmpty())
+        __return=fu.formatMask(this->format(), __return);
+
+    return __return;
 }
 
 const QString &Header::field() const

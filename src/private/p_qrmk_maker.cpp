@@ -972,6 +972,7 @@ QString MakerPvt::printPDF()
                 }
 
                 if(!signature->documentFormatted().isEmpty()){//Document
+                    Q_DECLARE_FU;
                     auto rect=QRect(rectSign.x(), nextY(), rectSign.width(), rectSign.height());
                     painter.setBrush(Qt::NoBrush);
                     painter.setPen(Qt::black);

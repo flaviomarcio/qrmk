@@ -100,16 +100,19 @@ private:
 
             headers
                     .header("document01")
+                    .format("CNPJ: ##.###.###/####-##;0")
                     .dataType(Header::String)
                     .visible(false);
 
             headers
                     .header("document02")
+                    .format("CPF: ###x###x###/##;0")
                     .dataType(Header::String)
                     .visible(false);
 
             headers
                     .header("document03")
+                    .format("CPF: ###-###-###+##;_")
                     .dataType(Header::String)
                     .visible(false);
         };
