@@ -25,7 +25,7 @@ public:
     QStm::MetaEnum<Maker::Orientation> orientation=Maker::Portrait;
     Maker::OutFormat outFormat=Maker::PDF;
     QString outFileName;
-    QVariantList items;
+    QVariantList items, outPutRecord;
     QString owner;
     QString title;
     QVariantHash filters;
@@ -65,8 +65,7 @@ public:
 
     int getLines();;
 
-    QVariantList makeRecords();
-
+    const QVariantList &makeRecords();
 
     QByteArray getColumnSeparator()const;
 

@@ -37,7 +37,7 @@ Maker &Maker::make(const OutFormat outFormat)
     return *this;
 }
 
-QVariantList Maker::makeRecords()
+const QVariantList &Maker::makeRecords()
 {
     p->prepare();
     return p->makeRecords();

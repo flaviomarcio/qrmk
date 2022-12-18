@@ -125,19 +125,19 @@ int MakerPvt::getLines()
     }
 }
 
-QVariantList MakerPvt::makeRecords()
+const QVariantList &MakerPvt::makeRecords()
 {
     if(this->items.isEmpty())
-        return {};
+        return this->outPutRecord;
 
-    QVariantList vList;
+    auto &outPutRecord=this->outPutRecord;
 
     QVariantHash itemRecord;
 
     RowType lastRowType;
 
-    auto writeLine=[&vList, &lastRowType](const RowType rowType, const QVariant &rowValue){
-        vList.append(QVariantHash{{__rowType, rowType}, {__rowValue,rowValue}});
+    auto writeLine=[&outPutRecord, &lastRowType](const RowType rowType, const QVariant &rowValue){
+        outPutRecord.append(QVariantHash{{__rowType, rowType}, {__rowValue,rowValue}});
         lastRowType=rowType;
     };
     auto writeColumns=[&writeLine, &lastRowType](RowType rowType=RowHeader)//draw headers
@@ -442,8 +442,10 @@ QVariantList MakerPvt::makeRecords()
                     if(!this->headers.contains(headerName))
                         continue;
                     static const auto __format=QString("%1: %2");
-                    const auto &header=this->headers.header(headerName);
-                    auto value=vu.toStr(itemRow.value(header.field()));
+                    auto &header=this->headers.header(headerName);
+                    auto value=header.toFormattedValue(itemRow.value(header.field()));
+
+
                     if(header.title().trimmed().isEmpty())
                         vLine.append(value);
                     else
@@ -472,7 +474,7 @@ QVariantList MakerPvt::makeRecords()
         for(auto &item: this->items){
             auto vHash=item.toHash();
             if(vHash.contains(__rowType) && vHash.contains(__rowValue)){
-                vList.append(vHash);
+                outPutRecord.append(vHash);
                 vHash=vHash.value(__rowValue).toHash();
             }
             groupingCheck(itemRecord=vHash);
@@ -485,7 +487,7 @@ QVariantList MakerPvt::makeRecords()
     writeSummary(this->items, RowSummaryTotal, __totalFinal);
     writeSignatures(itemRecord);
 
-    return vList;
+    return outPutRecord;
 }
 
 

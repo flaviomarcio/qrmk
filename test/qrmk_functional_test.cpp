@@ -81,7 +81,7 @@ private:
                     .title("Customer name")
                     .align(Header::Start)
                     .dataType(Header::String)
-                    .format("${uuid} - ${customer_name}")
+                    .format("${document01} - ${customer_name}")
                     .width("55%");
 
             headers
@@ -100,19 +100,19 @@ private:
 
             headers
                     .header("document01")
-                    .format("CNPJ: ##.###.###/####-##;0")
+                    .format("##.###.###/####-##;0")
                     .dataType(Header::String)
                     .visible(false);
 
             headers
                     .header("document02")
-                    .format("CPF: ###x###x###/##;0")
+                    .format("###x###x###/##;0")
                     .dataType(Header::String)
                     .visible(false);
 
             headers
                     .header("document03")
-                    .format("CPF: ###-###-###+##;_")
+                    .format("###-###-###+##;_")
                     .dataType(Header::String)
                     .visible(false);
         };
@@ -169,17 +169,17 @@ private:
             signatures
                     .signature("${document01}-One")
                     .documentType(Signature::CNPJ)
-                    .name("${customer_name}");
+                    .name("CNPJ ${customer_name}");
 
             signatures
                     .signature("${document02}-Two")
-                    .documentType(Signature::CNPJ)
-                    .name("${customer_name}");
+                    .documentType(Signature::CPF)
+                    .name("CPF ${customer_name}");
 
             signatures
                     .signature("${document03}-three")
-                    .documentType(Signature::CNPJ)
-                    .name("${customer_name}");
+                    .documentType(Signature::CPF)
+                    .name("CPF ${customer_name}");
         };
 
 

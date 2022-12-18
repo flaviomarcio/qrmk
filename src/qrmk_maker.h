@@ -61,7 +61,7 @@ public:
     //! \param vList
     //! \return
     //!
-    QVariantList makeRecords();
+    const QVariantList &makeRecords();
 
     //!
     //! \brief clean
