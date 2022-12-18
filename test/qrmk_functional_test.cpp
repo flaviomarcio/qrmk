@@ -121,7 +121,6 @@ private:
         {
             headers
                     .header("customer_name")
-                    .format("${customer_name}")
                     .computeMode(Header::Text);
 
             headers

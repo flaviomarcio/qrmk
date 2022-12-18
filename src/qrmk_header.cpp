@@ -83,7 +83,7 @@ Header::Header(QObject *parent)
     this->p=new HeaderPvt{parent};
 }
 
-const QString Header::toFormattedValue(const QVariant &v)
+const QString Header::toFormattedValue(const QVariant &v)const
 {
     Q_DECLARE_FU;
     QString __return;
@@ -96,6 +96,14 @@ const QString Header::toFormattedValue(const QVariant &v)
         __return=fu.formatMask(this->format(), __return);
 
     return __return;
+}
+
+const QVariant Header::toValue(const QVariant &v)const
+{
+    if(this->format().trimmed().isEmpty())
+        return v;
+
+    return this->toFormattedValue(v);
 }
 
 const QString &Header::field() const
@@ -387,7 +395,7 @@ Header &Header::format(const QString &newFormat)
 {
     if (p->format == newFormat)
         return *this;
-    p->format = newFormat;
+    p->format = newFormat.trimmed();
     emit formatChanged();
     return *this;
 }

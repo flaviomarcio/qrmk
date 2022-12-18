@@ -73,7 +73,9 @@ public:
 
     QString getFileName();
 
-    QString parserString(const QString &text, const QVariantHash &itemRecord);
+    QString parserText(const QVariant &valueParser, const QVariantHash &itemRecord);
+
+    QVariant parserValue(const QVariant &valueParser, const QVariantHash &itemRecord);
 
     QString printPDF();
 

@@ -103,12 +103,15 @@ void MakerPvt::prepare()
     }
 
     for(auto &header:this->summary.list()){
-        if(header->dataType()!=Header::Auto)
-            return;
         if(!this->headers.contains(header->field()))
-            return;
+            continue;
+
         const auto &h=this->headers.header(header->field());
-        header->dataType(h.dataType());
+        if((header->dataType()==Header::Auto) && (header->dataType()!=h.dataType()))
+            header->dataType(h.dataType());
+
+        if(header->format().isEmpty() && !h.format().isEmpty())
+            header->format(h.format());
     }
     this->maxRows=(maxRows>0)?maxRows:this->getLines();
 }
@@ -158,7 +161,7 @@ const QVariantList &MakerPvt::makeRecords()
     {
         writeLine(RowValues, itemRecord);
     };
-    auto writeSummary=[this, &writeLine, &writeSingleLine, &writeColumns](const QVariantList &vSummaryList, RowType rowType, const QString &totalMessage)
+    auto writeSummary=[this, &itemRecord, &writeLine, &writeSingleLine, &writeColumns](const QVariantList &vSummaryList, RowType rowType, const QString &totalMessage)
     {
         Q_UNUSED(rowType)
 
@@ -376,10 +379,21 @@ const QVariantList &MakerPvt::makeRecords()
                 auto &itemSummary=itemGrouping[group];
                 for(auto &header : this->summary.list()){
                     auto value=itemSummary.value(header->field());
-                    value=header->toFormattedValue(value);
+
+                    if(this->headers.contains(header->field())){//original header format
+                        auto &h=this->headers.header(header->field());
+                        value=h.toValue(value);
+                        value=parserValue(value, itemRecord);
+                    }
+                    //sumary header format
+                    value=header->toValue(value);
+                    if(!header->format().isEmpty())
+                        value=parserValue(header->format(), itemRecord);
+                    else
+                        value=parserValue(value, itemRecord);
                     itemRowFormatted.insert(header->field(), value);
                 }
-                writeLine(RowValues, itemRowFormatted);
+                writeLine(rowType, itemRowFormatted);
             }
         }
         return true;
@@ -387,7 +401,7 @@ const QVariantList &MakerPvt::makeRecords()
 
     QVariantHash vLastRow;
     QVariantList vSummaryRows;
-    auto groupingCheck=[this, &vLastRow, &vSummaryRows, &writeColumns, &writeSummary, &writeSingleLine](const QVariantHash &itemRow, bool lastSummary=false)//draw headers
+    auto groupingCheck=[this, &vLastRow, &vSummaryRows, &writeColumns, &writeSummary, &writeSingleLine](const QVariantHash &itemRecord, bool lastSummary=false)//draw headers
     {
         Q_DECLARE_VU;
 
@@ -397,8 +411,8 @@ const QVariantList &MakerPvt::makeRecords()
         if(!lastSummary){
 
             if(vLastRow.isEmpty()){//first call check
-                vLastRow=itemRow;
-                vSummaryRows.append(itemRow);//rows to group summary
+                vLastRow=itemRecord;
+                vSummaryRows.append(itemRecord);//rows to group summary
                 return false;
             }
 
@@ -410,7 +424,7 @@ const QVariantList &MakerPvt::makeRecords()
 
                     const auto &header=this->headers.header(headerName);
 
-                    auto v0=vu.toByteArray(itemRow.value(header.field()));
+                    auto v0=vu.toByteArray(itemRecord.value(header.field()));
                     auto v1=vu.toByteArray(vLastRow.value(header.field()));
                     if(v0==v1)
                         continue;
@@ -420,22 +434,22 @@ const QVariantList &MakerPvt::makeRecords()
             }
 
             if(!vLastRow.isEmpty()){
-                vSummaryRows.append(itemRow);//rows to group summary
+                vSummaryRows.append(itemRecord);//rows to group summary
                 return false;
             }
         }
 
         writeSummary(vSummaryRows, RowSummaryGrouping, {}/*__total*/);
-        vLastRow=itemRow;
+        vLastRow=itemRecord;
         vSummaryRows.clear();
-        vSummaryRows.append(itemRow);//rows to group summary
+        vSummaryRows.append(itemRecord);//rows to group summary
 
 
         {
 
             QStringList vLine;
             if(!this->groupingDisplay.trimmed().isEmpty()){
-                vLine.append(this->parserString(this->groupingDisplay, itemRow));
+                vLine.append(this->parserText(this->groupingDisplay, itemRecord));
             }
             else{
                 for(auto&headerName: this->groupingFields){
@@ -443,13 +457,13 @@ const QVariantList &MakerPvt::makeRecords()
                         continue;
                     static const auto __format=QString("%1: %2");
                     auto &header=this->headers.header(headerName);
-                    auto value=header.toFormattedValue(itemRow.value(header.field()));
+                    auto value=header.toValue(itemRecord.value(header.field()));
 
-
-                    if(header.title().trimmed().isEmpty())
-                        vLine.append(value);
-                    else
-                        vLine.append(__format.arg(header.title(), value));
+                    QString valueText;
+                    valueText=this->parserText(value, itemRecord);
+                    if(!header.title().trimmed().isEmpty())
+                        vLine.append(__format.arg(header.title(), valueText));
+                    vLine.append(valueText);
                 }
             }
             auto text=vLine.join(__spaceJoin).trimmed();
@@ -532,14 +546,12 @@ QString MakerPvt::getFileName()
 #endif
 }
 
-
-
-QString MakerPvt::parserString(const QString &text, const QVariantHash &itemRecord)
+QString QRmk::MakerPvt::parserText(const QVariant &valueParser, const QVariantHash &itemRecord)
 {
-    auto __return=text;
+    auto __return=valueParser.toString();
     static const auto __env="${";
     static const auto __format=QString{"${%1}"};
-    if(!text.contains(__env))
+    if(!__return.contains(__env))
         return __return;
     for(auto &header: this->headers.list()){
         auto env=__format.arg(header->field()).toLower();
@@ -550,7 +562,22 @@ QString MakerPvt::parserString(const QString &text, const QVariantHash &itemReco
         }
     }
     return __return.trimmed();
+}
 
+
+
+QVariant MakerPvt::parserValue(const QVariant &valueParser, const QVariantHash &itemRecord)
+{
+    switch (valueParser.typeId()) {
+    case QMetaType::UnknownType:
+    case QMetaType::QString:
+    case QMetaType::QByteArray:
+        break;
+    default:
+        return valueParser;
+    }
+
+    return parserText(valueParser, itemRecord);
 }
 
 
@@ -678,7 +705,7 @@ QString MakerPvt::printPDF()
         painter.drawText(rect, Qt::AlignRight, __time);
 
         for(auto extra:this->extraPageInfo){
-            extra=this->parserString(extra,itemRecord);
+            extra=this->parserText(extra,itemRecord);
             if(extra.isEmpty())
                 continue;
             rect.setY(nextY());
@@ -765,9 +792,9 @@ QString MakerPvt::printPDF()
                 value=header->toFormattedValue(value);
 
             if(!header->format().isEmpty())
-                value=this->parserString(header->format(), itemRecord);
+                value=this->parserText(header->format(), itemRecord);
             else
-                value=this->parserString(value.toString(), itemRecord);
+                value=this->parserText(value, itemRecord);
 
             itemRowFormatted.insert(header->field(), value);
 
@@ -775,7 +802,7 @@ QString MakerPvt::printPDF()
         writeLine(itemRowFormatted);
     };
 
-    auto writeSingleLine=[this, &nextY, /*&startY, */&painter](const QVariant &outItem)//draw headers
+    auto writeSingleLine=[this, &nextY, &itemRecord, /*&startY, */&painter](const QVariant &outItem)//draw headers
     {
         if(headersList.isEmpty())
             return;
@@ -795,6 +822,7 @@ QString MakerPvt::printPDF()
                     continue;
 
                 auto valueText=header->toFormattedValue(value);
+                valueText=this->parserText(valueText, itemRecord);
                 static const auto __format=QString("%1: %2");
                 if(!header->title().isEmpty() && !valueText.isEmpty())
                     textLine.append(__format.arg(header->title(), valueText));
@@ -808,8 +836,10 @@ QString MakerPvt::printPDF()
         default:
             Q_DECLARE_VU;
             auto v=vu.toStr(outItem).trimmed();
-            if(!v.isEmpty())
+            if(!v.isEmpty()){
+                v=this->parserText(v, itemRecord);
                 textLine.append(v);
+            }
             break;
         }
 
@@ -902,7 +932,7 @@ QString MakerPvt::printPDF()
                 auto startX=((totalWidth/2)-(wArea/2));
                 auto rect=QRect(startX, nextY(2), wArea, (rowHeight*declarationRows));
                 auto declaration=this->signature.declaration().join(" ");
-                declaration=this->parserString(declaration, itemRecord);
+                declaration=this->parserText(declaration, itemRecord);
 
                 auto font=fontNormal;
                 font.setPointSize(font.pointSize()+2);
@@ -968,7 +998,7 @@ QString MakerPvt::printPDF()
                     auto rect=QRect(rectSign.x(), nextY(0.5), rectSign.width(), rectSign.height());
                     painter.setBrush(Qt::NoBrush);
                     painter.setPen(Qt::black);
-                    auto text=this->parserString(signature->name(), itemRecord);
+                    auto text=this->parserText(signature->name(), itemRecord);
                     QRect boundingRect;
                     painter.drawText(rect, Qt::AlignCenter, text, &boundingRect);
                 }
@@ -978,7 +1008,7 @@ QString MakerPvt::printPDF()
                     auto rect=QRect(rectSign.x(), nextY(), rectSign.width(), rectSign.height());
                     painter.setBrush(Qt::NoBrush);
                     painter.setPen(Qt::black);
-                    auto text=this->parserString(signature->document(), itemRecord);
+                    auto text=this->parserText(signature->document(), itemRecord);
                     QRect boundingRect;
                     painter.drawText(rect, Qt::AlignCenter, text, &boundingRect);
                 }

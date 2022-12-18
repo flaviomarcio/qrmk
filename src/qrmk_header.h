@@ -80,7 +80,14 @@ public:
     //! \param v
     //! \return
     //!
-    const QString toFormattedValue(const QVariant &v);
+    const QString toFormattedValue(const QVariant &v) const;
+
+    //!
+    //! \brief toValue
+    //! \param v
+    //! \return
+    //!
+    const QVariant toValue(const QVariant &v) const;
 
 
 public:
