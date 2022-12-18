@@ -190,7 +190,7 @@ private:
                 .summary(makeSummary)
                 .signature(makerSignature)
                 .groupingFields({"customer_uuid"})
-                .groupingDisplay({"customer_name"})
+                .groupingDisplay({"Customer: ${customer_name}"})
                 ;
 
     }

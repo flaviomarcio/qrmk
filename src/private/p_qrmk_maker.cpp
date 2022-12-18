@@ -390,7 +390,7 @@ QVariantList MakerPvt::makeRecords()
     auto groupingCheck=[this, &vLastRow, &vSummaryRows, &writeColumns, &writeSummary, &writeSingleLine](const QVariantHash &itemRow, bool lastSummary=false)//draw headers
     {
         Q_DECLARE_VU;
-        QVariantHash vGroupRow;
+
         if(this->groupingFields.isEmpty())
             return false;
 
@@ -409,8 +409,6 @@ QVariantList MakerPvt::makeRecords()
                         continue;
 
                     const auto &header=this->headers.header(headerName);
-
-                    vGroupRow.insert(header.field(), itemRow.value(header.field()));
 
                     auto v0=vu.toByteArray(itemRow.value(header.field()));
                     auto v1=vu.toByteArray(vLastRow.value(header.field()));
@@ -431,12 +429,37 @@ QVariantList MakerPvt::makeRecords()
         vLastRow=itemRow;
         vSummaryRows.clear();
         vSummaryRows.append(itemRow);//rows to group summary
-        writeSingleLine(vGroupRow);
+
+
+        {
+
+            QStringList vLine;
+            if(!this->groupingDisplay.trimmed().isEmpty()){
+                vLine.append(this->parserString(this->groupingDisplay, itemRow));
+            }
+            else{
+                for(auto&headerName: this->groupingFields){
+                    if(!this->headers.contains(headerName))
+                        continue;
+                    static const auto __format=QString("%1: %2");
+                    const auto &header=this->headers.header(headerName);
+                    auto value=vu.toStr(itemRow.value(header.field()));
+                    if(header.title().trimmed().isEmpty())
+                        vLine.append(value);
+                    else
+                        vLine.append(__format.arg(header.title(), value));
+                }
+            }
+            auto text=vLine.join(__spaceJoin).trimmed();
+            if(!text.isEmpty())
+                writeSingleLine(text);
+        }
+
         writeColumns();
         return true;
     };
 
-    auto writeSignatures=[this, &writeLine, &itemRecord]()
+    auto writeSignatures=[this, &writeLine](const QVariant &itemRecord)
     {
         if(this->signature.isEmpty())
             return;
@@ -460,7 +483,7 @@ QVariantList MakerPvt::makeRecords()
     groupingCheck({},true);
 
     writeSummary(this->items, RowSummaryTotal, __totalFinal);
-    writeSignatures();
+    writeSignatures(itemRecord);
 
     return vList;
 }
@@ -831,7 +854,7 @@ QString MakerPvt::printPDF()
         pageStart();
     };
 
-    auto writeSignatures=[this, &totalPageInfo, &nextY, &painter, &itemRecord, &startY, &pageBlank]()
+    auto writeSignatures=[this, &totalPageInfo, &nextY, &painter, &startY, &pageBlank](const QVariantHash &itemRecord)
     {
         if(this->signature.isEmpty())
             return;
@@ -999,7 +1022,7 @@ QString MakerPvt::printPDF()
             writeReportValues(itemRecord);
             break;
         case RowSignature:
-            writeSignatures();
+            writeSignatures(itemRecord);
             break;
         default:
             break;

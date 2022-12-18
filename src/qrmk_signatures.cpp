@@ -206,7 +206,7 @@ QString Signatures::localFormatted() const
         return {};
 
 
-    auto brz=QLocale{QLocale::Portuguese, QLocale::Brazil};
+    static const auto brz=QLocale{QLocale::Portuguese, QLocale::Brazil};
 
 
 
