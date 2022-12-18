@@ -10,12 +10,12 @@ class Q_RMK_EXPORT Signature : public QStm::ObjectWrapper
     Q_OBJECT
     Q_STM_OBJECT_WRAPPER(Signature)
 
-    Q_PROPERTY(QVariant documentType READ documentType WRITE documentType RESET resetDocumentType NOTIFY documentTypeChanged)
+    Q_PROPERTY(DocumentType documentType READ documentType WRITE documentType RESET resetDocumentType NOTIFY documentTypeChanged)
     Q_PROPERTY(QString document READ document WRITE document RESET resetDocument NOTIFY documentChanged)
     Q_PROPERTY(QString name READ name WRITE name RESET resetName NOTIFY nameChanged)
     Q_PROPERTY(QStringList extraLines READ extraLines WRITE extraLines RESET resetExtraLines NOTIFY extraLinesChanged)
 public:
-    enum DocumentType{
+    enum class DocumentType{
         None, CNPJ, CPF
     };
 
@@ -31,7 +31,8 @@ public:
     //! \brief documentType
     //! \return
     //!
-    QRmk::Signature::DocumentType documentType() const;
+    DocumentType documentType() const;
+    Signature &documentType(const DocumentType &newDocumentType);
     Signature &documentType(const QVariant &newDocumentType);
     Signature &resetDocumentType();
 

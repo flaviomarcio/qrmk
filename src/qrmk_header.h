@@ -31,7 +31,7 @@ public:
     //!
     //! \brief The Alignment enum
     //!
-    enum Alignment{
+    enum class Alignment{
         Start=Qt::AlignLeft,
         Center=Qt::AlignCenter,
         End=Qt::AlignRight,
@@ -58,7 +58,7 @@ public:
     };
     Q_ENUM(DataType)
 
-    enum ComputeMode{
+    enum class ComputeMode{
           None
         , Text
         , Count
@@ -88,7 +88,6 @@ public:
     //! \return
     //!
     const QVariant toValue(const QVariant &v) const;
-
 
 public:
     //!
@@ -144,6 +143,7 @@ public:
     //! \return
     //!
     Alignment align() const;
+    Header &align(const Alignment &newAlign);
     Header &align(const QVariant &newAlign);
     Header &resetAlign();
     Qt::Alignment alignQt() const;
@@ -200,7 +200,8 @@ public:
     //! \brief computeMode
     //! \return
     //!
-    QRmk::Header::ComputeMode computeMode() const;
+    ComputeMode computeMode() const;
+    Header &computeMode(const ComputeMode &newComputeMode);
     Header &computeMode(const QVariant &newComputeMode);
     Header &resetComputeMode();
 
@@ -211,6 +212,18 @@ public:
     QString &format() const;
     Header &format(const QString &newFormat);
     Header &resetFormat();
+
+    //!
+    //! \brief isFormatMask
+    //! \return
+    //!
+    bool isFormatMask() const;
+
+    //!
+    //! \brief isFormatParser
+    //! \return
+    //!
+    bool isFormatParser() const;
 
 signals:
     void fieldChanged();

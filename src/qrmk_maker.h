@@ -22,14 +22,25 @@ public:
     //!
     //! \brief The OutFormat enum
     //!
-    enum OutFormat{PDF=0, CSV=1, TXT=2};
+    enum class OutFormat{PDF=0, CSV=1, TXT=2};
     Q_ENUM(OutFormat)
 
     //!
     //! \brief The Orientation enum
     //!
-    enum Orientation{Portrait=0, Landscape=1};
+    enum class Orientation{Portrait=0, Landscape=1};
     Q_ENUM(Orientation);
+
+    //!
+    //! \brief The Alignment enum
+    //!
+    enum class Alignment{
+        Start=Qt::AlignLeft,
+        Center=Qt::AlignCenter,
+        End=Qt::AlignRight,
+        Justify=Qt::AlignJustify
+    };
+    Q_ENUM(Alignment)
 
     //!
     //! \brief Maker
@@ -54,7 +65,7 @@ public:
     //! \param outFormat
     //! \return
     //!
-    Maker &make(const OutFormat outFormat=PDF);
+    Maker &make(const OutFormat outFormat=OutFormat::PDF);
 
     //!
     //! \brief makeRecords
@@ -163,6 +174,13 @@ public:
     //!
     QString groupingDisplay() const;
     Maker &groupingDisplay(const QString &newGroupingDisplay);
+
+    //!
+    //! \brief groupingDisplay
+    //! \return
+    //!
+    Alignment groupingAlignment() const;
+    Maker &groupingAlignment(const QVariant &newGroupingDisplay);
 
     //!
     //! \brief lines

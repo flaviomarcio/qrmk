@@ -4,12 +4,17 @@
 
 namespace QRmk{
 
+
 static const auto extPDF="pdf";
 static const auto extCSV="csv";
 static const auto extTXT="txt";
 
 static const auto sepCSV=";";
 static const auto sepTXT="|";
+
+
+static const auto __fontDefault="Sans Serif";
+
 static const auto __spaceJoin=", ";
 
 static const auto __rowType="__row_type__";
@@ -121,7 +126,7 @@ int MakerPvt::getLines()
     if(this->lines>0)
         return this->lines;
     switch (this->orientation.type()) {
-    case Maker::Landscape:
+    case Maker::Orientation::Landscape:
         return 60;
     default://Maker::Portrait
         return 90;
@@ -256,24 +261,24 @@ const QVariantList &MakerPvt::makeRecords()
                 auto list=itemSummary.value(header->field()).toList();
 
                 switch (header->computeMode()) {
-                case Header::Text:
+                case Header::ComputeMode::Text:
                 {
                     if(!list.contains(itemSummaryValue))
                         list.append(itemSummaryValue);
                     value=list;
                     break;
                 }
-                case Header::Count:
+                case Header::ComputeMode::Count:
                 {
                     if(!list.contains(itemSummaryValue))
                         list.append(itemSummaryValue);
                     value=list;
                     break;
                 }
-                case Header::Sum:
-                case Header::Max:
-                case Header::Min:
-                case Header::Avg:
+                case Header::ComputeMode::Sum:
+                case Header::ComputeMode::Max:
+                case Header::ComputeMode::Min:
+                case Header::ComputeMode::Avg:
                 {
                     list.append(itemSummaryValue);
                     value=list;
@@ -300,7 +305,7 @@ const QVariantList &MakerPvt::makeRecords()
                     auto vGroupedList=value.toList();
 
                     switch (header->computeMode()) {
-                    case Header::Text:
+                    case Header::ComputeMode::Text:
                     {
                         if(vGroupedList.isEmpty())
                             value={};
@@ -310,7 +315,7 @@ const QVariantList &MakerPvt::makeRecords()
                             value=value.toStringList().join(__spaceJoin);
                         break;
                     }
-                    case Header::Count:
+                    case Header::ComputeMode::Count:
                     {
                         if(header->format().isEmpty())
                             value=vGroupedList.count();
@@ -321,20 +326,20 @@ const QVariantList &MakerPvt::makeRecords()
                         }
                         break;
                     }
-                    case Header::Sum:
-                    case Header::Max:
-                    case Header::Min:
+                    case Header::ComputeMode::Sum:
+                    case Header::ComputeMode::Max:
+                    case Header::ComputeMode::Min:
                     {
                         QVariant calc;
                         for(auto&v:vGroupedList){
                             switch (header->computeMode()) {
-                            case Header::Sum:
+                            case Header::ComputeMode::Sum:
                                 calc=calc.toDouble()+vu.toDouble(v);
                                 break;
-                            case Header::Max:
+                            case Header::ComputeMode::Max:
                                 calc=checkMajor(header, calc, v);
                                 break;
-                            case Header::Min:
+                            case Header::ComputeMode::Min:
                                 calc=checkMinor(header, calc, v);
                             default:
                                 break;
@@ -349,7 +354,7 @@ const QVariantList &MakerPvt::makeRecords()
 
                         break;
                     }
-                    case Header::Avg:
+                    case Header::ComputeMode::Avg:
                     {
                         double calc=0;
                         for(auto&v:vGroupedList){
@@ -379,18 +384,15 @@ const QVariantList &MakerPvt::makeRecords()
                 auto &itemSummary=itemGrouping[group];
                 for(auto &header : this->summary.list()){
                     auto value=itemSummary.value(header->field());
-
-                    if(this->headers.contains(header->field())){//original header format
-                        auto &h=this->headers.header(header->field());
-                        value=h.toValue(value);
-                        value=parserValue(value, itemRecord);
-                    }
-                    //sumary header format
                     value=header->toValue(value);
-                    if(!header->format().isEmpty())
-                        value=parserValue(header->format(), itemRecord);
-                    else
-                        value=parserValue(value, itemRecord);
+                    itemRowFormatted.insert(header->field(), value);
+                }
+                for(auto &header : this->headers.list()){
+                    if(itemRowFormatted.contains(header->field()))
+                        continue;
+
+                    auto value=itemRecord.value(header->field());
+
                     itemRowFormatted.insert(header->field(), value);
                 }
                 writeLine(rowType, itemRowFormatted);
@@ -509,9 +511,9 @@ const QVariantList &MakerPvt::makeRecords()
 QByteArray MakerPvt::getColumnSeparator() const
 {
     switch (this->outFormat) {
-    case Maker::CSV:
+    case Maker::OutFormat::CSV:
         return sepCSV;
-    case Maker::TXT:
+    case Maker::OutFormat::TXT:
         return sepTXT;
     default:
         return {};
@@ -523,11 +525,11 @@ QByteArray MakerPvt::getColumnSeparator() const
 QByteArray MakerPvt::getExtension()
 {
     switch (this->outFormat) {
-    case Maker::PDF:
+    case Maker::OutFormat::PDF:
         return extPDF;
-    case Maker::CSV:
+    case Maker::OutFormat::CSV:
         return extCSV;
-    case Maker::TXT:
+    case Maker::OutFormat::TXT:
         return extTXT;
     default:
         return {};
@@ -604,7 +606,7 @@ QString MakerPvt::printPDF()
     QPdfWriter pdfWriter(&file);
     pdfWriter.setPageSize(QPageSize::A4);
     switch (this->orientation.type()) {
-    case Maker::Landscape:
+    case Maker::Orientation::Landscape:
         pdfWriter.setPageOrientation(QPageLayout::Orientation::Landscape);
         break;
     default:
@@ -617,7 +619,7 @@ QString MakerPvt::printPDF()
     auto painter=QPainter(&pdfWriter);
     painter.setBrush(Qt::NoBrush);
     painter.setPen(Qt::black);
-    static auto fontNormal=QFont{"Sans Serif", 8};
+    static auto fontNormal=QFont{__fontDefault, 8};
     static auto fontBold=fontNormal;
     fontBold.setBold(true);
     static auto fontItalic=fontNormal;
@@ -1163,11 +1165,11 @@ QByteArray MakerPvt::fieldValueAlign(Header *header, const QString &value)
 
     auto text=value.trimmed();
     switch (header->align()) {
-    case Header::Start:
+    case Header::Alignment::Start:
         return text.leftJustified(length,' ',true).toLatin1();
-    case Header::End:
+    case Header::Alignment::End:
         return text.rightJustified(length,' ', true).toLatin1();
-    default://Header::Center
+    default://Header::Alignment::Center
         bool odd=false;
         while(text.length()<length)
             text=odd?(' '+text):(text+' ');

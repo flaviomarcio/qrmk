@@ -22,8 +22,8 @@ public:
 
     Q_DECLARE_VU;
     Maker*parent=nullptr;
-    QStm::MetaEnum<Maker::Orientation> orientation=Maker::Portrait;
-    Maker::OutFormat outFormat=Maker::PDF;
+    QStm::MetaEnum<Maker::Orientation> orientation=Maker::Orientation::Portrait;
+    Maker::OutFormat outFormat=Maker::OutFormat::PDF;
     QString outFileName;
     QVariantList items, outPutRecord;
     QString owner;

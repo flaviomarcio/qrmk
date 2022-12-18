@@ -59,27 +59,27 @@ private:
             headers
                     .header("dt")
                     .title("Date")
-                    .align(Header::Center)
+                    .align(Header::Alignment::Center)
                     .dataType(Header::Date)
                     .width("10%");
             headers
                     .header("uuid")
                     .title("ID")
-                    .align(Header::Center)
+                    .align(Header::Alignment::Center)
                     .dataType(Header::Uuid)
                     .visible(false);
 
             headers
                     .header("customer_uuid")
                     .title("ID")
-                    .align(Header::Center)
+                    .align(Header::Alignment::Center)
                     .dataType(Header::Uuid)
                     .visible(false);
 
             headers
                     .header("customer_name")
                     .title("Customer name")
-                    .align(Header::Start)
+                    .align(Header::Alignment::Start)
                     .dataType(Header::String)
                     .format("${document01} - ${customer_name}")
                     .width("55%");
@@ -87,14 +87,14 @@ private:
             headers
                     .header("value")
                     .title("Value")
-                    .align(Header::End)
+                    .align(Header::Alignment::End)
                     .dataType(Header::Currency)
                     .width("15%");
 
             headers
                     .header("enabled")
                     .title("Status")
-                    .align(Header::Center)
+                    .align(Header::Alignment::Center)
                     .dataType(Header::Boolean)
                     .width("10%");
 
@@ -121,11 +121,12 @@ private:
         {
             headers
                     .header("customer_name")
-                    .computeMode(Header::Text);
+                    .format("${document01} - ${customer_name}")
+                    .computeMode(Header::ComputeMode::Text);
 
             headers
                     .header("value")
-                    .computeMode(Header::Sum);
+                    .computeMode(Header::ComputeMode::Sum);
         };
 
         auto makeFilters=[](Headers &)
@@ -167,17 +168,17 @@ private:
 
             signatures
                     .signature("${document01}-One")
-                    .documentType(Signature::CNPJ)
+                    .documentType(Signature::DocumentType::CNPJ)
                     .name("CNPJ ${customer_name}");
 
             signatures
                     .signature("${document02}-Two")
-                    .documentType(Signature::CPF)
+                    .documentType(Signature::DocumentType::CPF)
                     .name("CPF ${customer_name}");
 
             signatures
                     .signature("${document03}-three")
-                    .documentType(Signature::CPF)
+                    .documentType(Signature::DocumentType::CPF)
                     .name("CPF ${customer_name}");
         };
 
@@ -192,7 +193,7 @@ private:
                 .summary(makeSummary)
                 .signature(makerSignature)
                 .groupingFields({"customer_uuid"})
-                .groupingDisplay({"Customer: ${customer_name}"})
+                .groupingDisplay({"${document01} ${customer_name}"})
                 ;
 
     }
@@ -202,9 +203,9 @@ private:
 
 TEST_F(ERP_Request_Report_Test_V1, reportSimple)
 {
-    EXPECT_TRUE(QFile::exists(maker.make(Maker::PDF).outFileName()))<<"failure: maker.make(Maker::PDF)";
-    EXPECT_TRUE(QFile::exists(maker.make(Maker::CSV).outFileName()))<<"failure: maker.make(Maker::CSV)";
-    EXPECT_TRUE(QFile::exists(maker.make(Maker::TXT).outFileName()))<<"failure: maker.make(Maker::TXT)";
+    EXPECT_TRUE(QFile::exists(maker.make(Maker::OutFormat::PDF).outFileName()))<<"failure: maker.make(Maker::PDF)";
+    EXPECT_TRUE(QFile::exists(maker.make(Maker::OutFormat::CSV).outFileName()))<<"failure: maker.make(Maker::CSV)";
+    EXPECT_TRUE(QFile::exists(maker.make(Maker::OutFormat::TXT).outFileName()))<<"failure: maker.make(Maker::TXT)";
 }
 
 TEST_F(ERP_Request_Report_Test_V1, reportRecords)

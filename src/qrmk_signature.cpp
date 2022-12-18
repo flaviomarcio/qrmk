@@ -7,7 +7,7 @@ namespace QRmk{
 
 class SignaturePvt:public QObject{
 public:
-    QStm::MetaEnum<Signature::DocumentType> documentType=Signature::None;
+    QStm::MetaEnum<Signature::DocumentType> documentType=Signature::DocumentType::None;
     QString document;
     QString name;
     QStringList extraLines;
@@ -97,6 +97,15 @@ QString Signature::documentFormatted() const
 Signature::DocumentType Signature::documentType() const
 {
     return p->documentType.type();
+}
+
+Signature &Signature::documentType(const DocumentType &newDocumentType)
+{
+    if (p->documentType == newDocumentType)
+        return *this;
+    p->documentType = newDocumentType;
+    emit documentTypeChanged();
+    return *this;
 }
 
 Signature &Signature::documentType(const QVariant &newDocumentType)

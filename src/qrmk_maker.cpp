@@ -23,12 +23,13 @@ Maker &Maker::make(const OutFormat outFormat)
 {
     p->prepare();
     p->outFormat=outFormat;
+
     switch (p->outFormat) {
-    case Maker::PDF:
+    case OutFormat::PDF:
         p->printPDF();
         break;
-    case Maker::CSV:
-    case Maker::TXT:
+    case OutFormat::CSV:
+    case OutFormat::TXT:
         p->printCSV_TXT();
         break;
     default:

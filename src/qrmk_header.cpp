@@ -13,7 +13,7 @@ public:
     int length=0;
     QStm::MetaEnum<Header::DataType> dataType;
     QVariant defaultValue;
-    QStm::MetaEnum<Header::Alignment> align=Header::Start;
+    QStm::MetaEnum<Header::Alignment> align=Header::Alignment::Start;
     int order=0;
     QVariant width;
     QColor foreGroundColor=Qt::black;
@@ -30,19 +30,19 @@ public:
         Q_DECLARE_FU;
 
         switch (Header::DataType(dataType)) {
-        case Header::Integer:
-        case Header::Number:
-        case Header::Double:
-        case Header::Currency:{
+        case Header::DataType::Integer:
+        case Header::DataType::Number:
+        case Header::DataType::Double:
+        case Header::DataType::Currency:{
             if(!v.toString().trimmed().isEmpty()){
                 if(v.toDouble()==0)
                     return v.toString();
             }
             break;
         }
-        case Header::Date:
-        case Header::Time:
-        case Header::DateTime:
+        case Header::DataType::Date:
+        case Header::DataType::Time:
+        case Header::DataType::DateTime:
         {
             if(!v.toString().trimmed().isEmpty()){
                 if(!v.toDateTime().isValid())
@@ -54,21 +54,21 @@ public:
         }
 
         switch (Header::DataType(dataType)) {
-        case Header::Integer:
+        case Header::DataType::Integer:
             return fu.toInt(v);
-        case Header::Number:
+        case Header::DataType::Number:
             return fu.toNumber(v);
-        case Header::Double:
+        case Header::DataType::Double:
             return fu.toDouble(v);
-        case Header::Currency:
+        case Header::DataType::Currency:
             return fu.currencySymbol(v);
-        case Header::Boolean:
+        case Header::DataType::Boolean:
             return fu.toBool(v);
-        case Header::Date:
+        case Header::DataType::Date:
             return fu.toDate(v);
-        case Header::Time:
+        case Header::DataType::Time:
             return fu.toTime(v);
-        case Header::DateTime:
+        case Header::DataType::DateTime:
             return fu.toDateTime(v);
         default:
             return fu.v(v);
@@ -87,20 +87,20 @@ const QString Header::toFormattedValue(const QVariant &v)const
 {
     Q_DECLARE_FU;
     QString __return;
-    if(p->dataType.equal(Auto))
+    if(p->dataType.equal(DataType::Auto))
         __return=fu.v(v);
     else
         __return=p->toFormatted(v, int(this->dataType()));
 
-    if(!this->format().isEmpty())
-        __return=fu.formatMask(this->format(), __return);
+    if(!this->isFormatMask())
+        return __return;
 
-    return __return;
+    return fu.formatMask(this->format(), __return);
 }
 
 const QVariant Header::toValue(const QVariant &v)const
 {
-    if(this->format().trimmed().isEmpty())
+    if(!this->isFormatMask())
         return v;
 
     return this->toFormattedValue(v);
@@ -225,6 +225,15 @@ Header::Alignment Header::align() const
     return p->align.type();
 }
 
+Header &Header::align(const Alignment &newAlign)
+{
+    if (p->align == newAlign)
+        return *this;
+    p->align = newAlign;
+    emit alignChanged();
+    return *this;
+}
+
 Header &Header::align(const QVariant &newAlign)
 {
     if (p->align == newAlign)
@@ -236,17 +245,17 @@ Header &Header::align(const QVariant &newAlign)
 
 Header &Header::resetAlign()
 {
-    return this->align(Header::Start);
+    return this->align(Header::Alignment::Start);
 }
 
 Qt::Alignment Header::alignQt() const
 {
     switch (p->align.type()) {
-    case Center:
+    case Alignment::Center:
         return Qt::AlignCenter;
-    case End:
+    case Alignment::End:
         return Qt::AlignRight | Qt::AlignVCenter;
-    case Justify:
+    case Alignment::Justify:
         return Qt::AlignJustify | Qt::AlignVCenter;
     default://Start:
         return Qt::AlignLeft | Qt::AlignVCenter;
@@ -372,6 +381,15 @@ Header::ComputeMode Header::computeMode() const
     return p->computeMode.type();
 }
 
+Header &Header::computeMode(const ComputeMode &newComputeMode)
+{
+    if (p->computeMode == newComputeMode)
+        return *this;
+    p->computeMode = newComputeMode;
+    emit computeModeChanged();
+    return *this;
+}
+
 Header &Header::computeMode(const QVariant &newComputeMode)
 {
     if (p->computeMode == newComputeMode)
@@ -403,6 +421,22 @@ Header &Header::format(const QString &newFormat)
 Header &Header::resetFormat()
 {
     return format({});
+}
+
+bool Header::isFormatMask() const
+{
+    static const auto __char="#";
+    if(p->format.contains(__char))
+        return true;
+    return {};
+}
+
+bool Header::isFormatParser() const
+{
+    static const auto __char="${";
+    if(p->format.contains(__char))
+        return true;
+    return {};
 }
 
 }
