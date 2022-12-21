@@ -52,6 +52,7 @@ public:
     QRect rectFull={};
     QRect rectSingleRow={};
     QList<Header *> headersList;
+    QList<Header *> headersSummary;
 
     explicit MakerPvt(Maker *parent=nullptr);
 
@@ -63,7 +64,7 @@ public:
 
     void prepare();
 
-    int getLines();;
+    int getLines();
 
     const QVariantList &makeRecords();
 
