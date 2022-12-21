@@ -667,7 +667,7 @@ QString MakerPvt::printPDF()
         auto pointLine=QPoint{0,0};
         this->rowWidth=0;
         QRect rect={};
-        double factor=1.2;
+        static const double factor=1.2;
         for(auto header : this->headersList){
             double per=vu.toDouble(header->width());
             int w=(totalWidth*per);
@@ -679,6 +679,27 @@ QString MakerPvt::printPDF()
             columnsHeaders.insert(header, rect);
             pointLine.setX(startX+=w);
         }
+
+        double cumativeWidth=0;
+        for(auto header : this->headersList){
+
+            if(!this->summary.contains(header->field())){
+                cumativeWidth+=vu.toDouble(header->width());
+                continue;
+            }
+
+            auto newHeader=this->headersSummary.isEmpty()?nullptr:this->headersSummary.last();
+            if(!newHeader){
+                newHeader=new Header{this};
+                headersSummary.append(newHeader);
+            }
+
+            auto perNew=cumativeWidth+vu.toDouble(header->width());
+            cumativeWidth=0;
+            auto withNew=__formatWidth.arg(QString::number(perNew,'f',6));
+            header->width(withNew);
+        }
+
         rectSingleRow=QRect(0,0, startX, int(this->rowHeight*factor));
     }
     rectFull=(rectFull.width()>0)?rectFull:QRect(0, 0, rowWidth, rowHeight);
