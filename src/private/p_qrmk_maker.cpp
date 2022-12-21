@@ -759,7 +759,30 @@ QString MakerPvt::printPDF()
         totalPageInfo=rect.height();
     };
 
-    auto writeColumns=[this, &nextY, &startY, &painter, &columnsHeaders]()//draw headers
+    auto writeColumnsFull=[this, &nextY, &startY, &painter, &columnsHeaders]()//draw headers
+    {
+        nextY();
+        painter.setFont(fontNormal);
+        for(auto header : headersList){
+            auto value=header->title();
+            auto rectBase = columnsHeaders.value(header);
+            auto rect=QRect(rectBase.x(), startY, rectBase.width(), rectBase.height());
+
+            painter.setBrush(Qt::lightGray);
+            painter.setPen(Qt::black);
+            painter.drawRect(rect);
+
+            rect=QRect(rectBase.x()+textOffSetL, startY/*+textOffSetL*/, rectBase.width()-(textOffSetR), rectBase.height()/*-textOffSetB*/);
+
+            painter.setBrush(Qt::NoBrush);
+            painter.setPen(Qt::black);
+            QRect boundingRect;
+            painter.drawText(rect, Qt::AlignCenter | Qt::TextWordWrap, value, &boundingRect);
+        }
+        nextY(0.2);
+    };
+
+    auto writeColumnsSummary=[this, &nextY, &startY, &painter, &columnsHeaders]()//draw headers
     {
         nextY();
         painter.setFont(fontNormal);
@@ -898,12 +921,12 @@ QString MakerPvt::printPDF()
         writePageInfo();
     };
 
-    auto pageStart=[&rowCount, &vRecordList, &writeColumns, &writePageInfo]()
+    auto pageStart=[&rowCount, &vRecordList, &writeColumnsFull, &writePageInfo]()
     {
         rowCount=0;
         writePageInfo();
         if(!vRecordList.isEmpty())
-            writeColumns();
+            writeColumnsFull();
     };
 
     auto pageNew=[&pdfWriter, &pageStart]()
@@ -1062,7 +1085,7 @@ QString MakerPvt::printPDF()
             break;
         case RowHeader:{
             if(!rowType.equal(lastRowType))
-                writeColumns();
+                writeColumnsFull();
             break;
         }
         case RowValues:
@@ -1075,7 +1098,7 @@ QString MakerPvt::printPDF()
             writeReportValues(itemRecord);
             break;
         case RowSummaryHeader:
-            writeColumns();
+            writeColumnsSummary();
             break;
         case RowSummaryTotal:
             writeReportValues(itemRecord);
