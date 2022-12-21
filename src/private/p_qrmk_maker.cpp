@@ -672,6 +672,7 @@ QString MakerPvt::printPDF()
         {
             QRect rect={};
             auto pointLine=QPoint{0,0};
+            columnsHeaders.clear();
             for(auto header : this->headersList){
                 double per=vu.toDouble(header->width());
                 int w=(totalWidth*per);
@@ -708,6 +709,7 @@ QString MakerPvt::printPDF()
 
             QRect rect={};
             auto pointLine=QPoint{0,0};
+            columnsSummary.clear();
             for(auto header : this->headersSummary){
                 double per=vu.toDouble(header->width());
                 int w=(totalWidth*per);
@@ -785,9 +787,11 @@ QString MakerPvt::printPDF()
     {
         nextY();
         painter.setFont(fontNormal);
-        for(auto header : headersList){
+        const auto &headers=headersList;
+        const auto &columnsRect=columnsHeaders;
+        for(auto header : headers){
             auto value=header->title();
-            auto rectBase = columnsHeaders.value(header);
+            auto rectBase = columnsRect.value(header);
             auto rect=QRect(rectBase.x(), startY, rectBase.width(), rectBase.height());
 
             painter.setBrush(Qt::lightGray);
@@ -804,13 +808,15 @@ QString MakerPvt::printPDF()
         nextY(0.2);
     };
 
-    auto writeColumnsSummary=[this, &nextY, &startY, &painter, &columnsHeaders]()//draw headers
+    auto writeColumnsSummary=[this, &nextY, &startY, &painter, &columnsSummary]()//draw headers
     {
         nextY();
         painter.setFont(fontNormal);
-        for(auto header : headersList){
+        const auto &headers=headersSummary;
+        const auto &columnsRect=columnsSummary;
+        for(auto header : headers){
             auto value=header->title();
-            auto rectBase = columnsHeaders.value(header);
+            auto rectBase = columnsRect.value(header);
             auto rect=QRect(rectBase.x(), startY, rectBase.width(), rectBase.height());
 
             painter.setBrush(Qt::lightGray);
