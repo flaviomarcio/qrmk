@@ -98,6 +98,8 @@ void MakerPvt::clear()
     this->headersList.clear();
     this->headers.clear();
     this->summary.clear();
+    qDeleteAll(headersSummary);
+    headersSummary.clear();
 }
 
 void MakerPvt::prepare()
