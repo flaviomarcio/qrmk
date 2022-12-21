@@ -12,6 +12,7 @@ static const auto extTXT="txt";
 static const auto sepCSV=";";
 static const auto sepTXT="|";
 
+static const auto __formatWidth=QString("%1%");
 
 static const auto __fontDefault="Sans Serif";
 
@@ -640,8 +641,9 @@ QString MakerPvt::printPDF()
 
     {//calc columns rectangle
 
+
         int startX=0, startY=0;
-        VariantUtil vu;
+        Q_DECLARE_VU;
 
         double sumWidth=0;
         for(auto header : this->headersList){
@@ -651,14 +653,13 @@ QString MakerPvt::printPDF()
         if(sumWidth>0){//width ajust
             double diff=(1.00-sumWidth);
             double diffWidth=totalWidth*diff;
-            static const auto __format=QString("%1%");
             for(auto header : this->headersList){
                 auto per=vu.toDouble(header->width());
                 auto curWidth=(totalWidth*per);
                 auto incWidth=(diffWidth*per);
                 auto width=(curWidth+incWidth);
                 auto perNew=(width/totalWidth)*100;
-                auto withNew=__format.arg(QString::number(perNew,'f',6));
+                auto withNew=__formatWidth.arg(QString::number(perNew,'f',6));
                 header->width(withNew);
             }
         }
