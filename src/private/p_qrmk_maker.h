@@ -14,7 +14,7 @@ namespace QRmk{
 
 class MakerPvt:public QObject{
     enum RowType{
-        RowNONE, RowPageInfo, RowHeader, RowValues, RowSingle, RowSummaryGrouping, RowSummaryHeader, RowSummaryTotal, RowSignature
+        RowNONE, RowPageInfo, RowSingle, RowHeader, RowValues, RowSignature, RowSummaryGrouping, RowSummaryTotal, RowSummaryValues
     };
 
     Q_ENUM(RowType)
@@ -66,7 +66,6 @@ public:
 
     int getLines();
 
-    const QVariantList &makeRecords();
 
     QByteArray getColumnSeparator()const;
 
@@ -78,11 +77,14 @@ public:
 
     QVariant parserValue(const QVariant &valueParser, const QVariantHash &itemRecord);
 
-    QString printPDF();
-
-    QString printCSV_TXT();
-
     QByteArray fieldValueAlign(Header *header, const QString &value);
+
+    const QVariantList &makeRecords();
+
+    QString makerPDF();
+
+    QString makeCSV_TXT();
+
 };
 
 }

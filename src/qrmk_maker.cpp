@@ -26,11 +26,11 @@ Maker &Maker::make(const OutFormat outFormat)
 
     switch (p->outFormat) {
     case OutFormat::PDF:
-        p->printPDF();
+        p->makerPDF();
         break;
     case OutFormat::CSV:
     case OutFormat::TXT:
-        p->printCSV_TXT();
+        p->makeCSV_TXT();
         break;
     default:
         break;

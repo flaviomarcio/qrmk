@@ -31,6 +31,12 @@ public:
     bool isEmpty()const;
 
     //!
+    //! \brief at
+    //! \param fieldName
+    //! \return
+    //!
+    Header *at(const QString &fieldName)const;
+    //!
     //! \brief item
     //! \param fieldName
     //! \return

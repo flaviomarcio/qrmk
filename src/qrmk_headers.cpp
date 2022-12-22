@@ -29,6 +29,11 @@ public:
         qDeleteAll(aux);
     }
 
+    Header *at(const QString &fieldName)
+    {
+        return collection.value(fieldName.toLower());
+    }
+
     Header &add(const QString &fieldName)
     {
         auto name=fieldName.trimmed().toLower();
@@ -82,6 +87,11 @@ bool Headers::contains(const QString &fieldName)
 bool Headers::isEmpty() const
 {
     return p->collection.isEmpty();
+}
+
+Header *Headers::at(const QString &fieldName) const
+{
+    return p->at(fieldName);
 }
 
 Header &Headers::header(const QString &fieldName)

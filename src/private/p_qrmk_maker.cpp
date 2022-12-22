@@ -29,6 +29,9 @@ typedef QVector<QByteArray> PropertyNames;
 Q_GLOBAL_STATIC_WITH_ARGS(PropertyNames, staticIgnoreMethods,({"objectName","values","measures","asJson", "measures", "baseValues", "clearOnSetFail"}))
 
 
+static const double rowFactor=0.02;
+static const double rowFactorSeparator=0.2;
+
 static const QVariantHash extractHash(const QObject *object, const QStringList &ignoreProperties)
 {
     QVariantHash __return;
@@ -105,6 +108,7 @@ void MakerPvt::clear()
 void MakerPvt::prepare()
 {
     this->headersList.clear();
+    this->headersSummary.clear();
     for(auto header : this->headers.list()){
         if(header->visible())
             headersList.append(header);
@@ -120,6 +124,8 @@ void MakerPvt::prepare()
 
         if(header->format().isEmpty() && !h.format().isEmpty())
             header->format(h.format());
+
+        this->headersSummary.append(header);
     }
     this->maxRows=(maxRows>0)?maxRows:this->getLines();
 }
@@ -133,6 +139,125 @@ int MakerPvt::getLines()
         return 60;
     default://Maker::Portrait
         return 90;
+    }
+}
+
+
+QByteArray MakerPvt::getColumnSeparator() const
+{
+    switch (this->outFormat) {
+    case Maker::OutFormat::CSV:
+        return sepCSV;
+    case Maker::OutFormat::TXT:
+        return sepTXT;
+    default:
+        return {};
+    }
+}
+
+
+
+QByteArray MakerPvt::getExtension()
+{
+    switch (this->outFormat) {
+    case Maker::OutFormat::PDF:
+        return extPDF;
+    case Maker::OutFormat::CSV:
+        return extCSV;
+    case Maker::OutFormat::TXT:
+        return extTXT;
+    default:
+        return {};
+    }
+}
+
+
+
+QString MakerPvt::getFileName()
+{
+    auto __format=QStringLiteral("%1.%2");
+#ifdef QT_DEBUG
+    return __format.arg("report", this->getExtension());
+#else
+    return __format.arg(QUuid::createUuid().toString(), this->getExtension());
+#endif
+}
+
+QString QRmk::MakerPvt::parserText(const QVariant &valueParser, const QVariantHash &itemRecord)
+{
+    auto __return=valueParser.toString();
+    static const auto __env="${";
+    static const auto __format=QString{"${%1}"};
+    if(!__return.contains(__env))
+        return __return;
+    for(auto &header: this->headers.list()){
+        auto env=__format.arg(header->field()).toLower();
+        if(__return.contains(env)){
+            auto val=itemRecord.value(header->field());
+            auto replaceValue=header->toFormattedValue(val);
+            __return=__return.replace(env, replaceValue);
+        }
+    }
+    return __return.trimmed();
+}
+
+QVariant MakerPvt::parserValue(const QVariant &valueParser, const QVariantHash &itemRecord)
+{
+    switch (valueParser.typeId()) {
+    case QMetaType::UnknownType:
+    case QMetaType::QString:
+    case QMetaType::QByteArray:
+        break;
+    default:
+        return valueParser;
+    }
+
+    return parserText(valueParser, itemRecord);
+}
+
+QByteArray MakerPvt::fieldValueAlign(Header *header, const QString &value)
+{
+    int length=header->length();
+    if(length<=0){
+        switch (header->dataType()) {
+        case Header::String:
+        case Header::Uuid:
+            length=10;
+            break;
+        case Header::Integer:
+        case Header::Number:
+        case Header::Double:
+        case Header::Currency:
+            length=11;
+            break;
+        case Header::Boolean:
+            length=3;
+            break;
+        case Header::Date:
+            length=10;
+            break;
+        case Header::Time:
+            length=8;
+            break;
+        case Header::DateTime:
+            length=19;
+            break;
+        default:
+            break;
+        }
+    }
+
+    auto text=value.trimmed();
+    switch (header->align()) {
+    case Header::Alignment::Start:
+        return text.leftJustified(length,' ',true).toLatin1();
+    case Header::Alignment::End:
+        return text.rightJustified(length,' ', true).toLatin1();
+    default://Header::Alignment::Center
+        bool odd=false;
+        while(text.length()<length)
+            text=odd?(' '+text):(text+' ');
+        return text.toLatin1();
     }
 }
 
@@ -151,11 +276,11 @@ const QVariantList &MakerPvt::makeRecords()
         outPutRecord.append(QVariantHash{{__rowType, rowType}, {__rowValue,rowValue}});
         lastRowType=rowType;
     };
-    auto writeColumns=[&writeLine, &lastRowType](RowType rowType=RowHeader)//draw headers
+    auto writeColumns=[&writeLine, &lastRowType](RowType rowType=RowHeader, const QVariant &values={})//draw headers
     {
         if(lastRowType==rowType)
             return;
-        writeLine(rowType, {});
+        writeLine(rowType, values);
     };
     auto writeSingleLine=[&writeLine](const QVariant &outItem)//draw headers
     {
@@ -165,11 +290,11 @@ const QVariantList &MakerPvt::makeRecords()
         writeLine(RowPageInfo,itemRecord);
         writeColumns();
     };
-    auto writeReportValues=[&writeLine](const QVariantHash &itemRecord)//draw headers
+    auto writeLineValues=[&writeLine](const QVariantHash &itemRecord)//draw headers
     {
         writeLine(RowValues, itemRecord);
     };
-    auto writeSummary=[this, &itemRecord, &writeLine, &writeSingleLine, &writeColumns](const QVariantList &vSummaryList, RowType rowType, const QString &totalMessage)
+    auto writeSummary=[this, &itemRecord, &writeLine, &writeSingleLine, &writeColumns](const QVariantList &vSummaryList, RowType rowType, const QString &titleHeader)
     {
         Q_UNUSED(rowType)
 
@@ -376,9 +501,9 @@ const QVariantList &MakerPvt::makeRecords()
             }
         }
 
-        if(!totalMessage.trimmed().isEmpty())
-            writeSingleLine(totalMessage);
-        writeColumns();
+        if(!titleHeader.trimmed().isEmpty())
+            writeSingleLine(titleHeader);
+        QVariantList vFinalSummaryRows;
         {//write grouping summary
             auto groups=itemGrouping.keys();
             groups.sort();
@@ -398,8 +523,13 @@ const QVariantList &MakerPvt::makeRecords()
 
                     itemRowFormatted.insert(header->field(), value);
                 }
-                writeLine(rowType, itemRowFormatted);
+                vFinalSummaryRows.append(itemRowFormatted);
             }
+        }
+        if(!vFinalSummaryRows.isEmpty()){
+            writeColumns(rowType, vFinalSummaryRows);
+            for(auto &value:vFinalSummaryRows)
+                writeLine(RowSummaryValues, value);
         }
         return true;
     };
@@ -444,7 +574,7 @@ const QVariantList &MakerPvt::makeRecords()
             }
         }
 
-        writeSummary(vSummaryRows, RowSummaryGrouping, {}/*__total*/);
+        writeSummary(vSummaryRows, RowSummaryGrouping, {});
         vLastRow=itemRecord;
         vSummaryRows.clear();
         vSummaryRows.append(itemRecord);//rows to group summary
@@ -497,7 +627,7 @@ const QVariantList &MakerPvt::makeRecords()
                 vHash=vHash.value(__rowValue).toHash();
             }
             groupingCheck(itemRecord=vHash);
-            writeReportValues(vHash);
+            writeLineValues(vHash);
         }
     }
 
@@ -509,85 +639,7 @@ const QVariantList &MakerPvt::makeRecords()
     return outPutRecord;
 }
 
-
-
-QByteArray MakerPvt::getColumnSeparator() const
-{
-    switch (this->outFormat) {
-    case Maker::OutFormat::CSV:
-        return sepCSV;
-    case Maker::OutFormat::TXT:
-        return sepTXT;
-    default:
-        return {};
-    }
-}
-
-
-
-QByteArray MakerPvt::getExtension()
-{
-    switch (this->outFormat) {
-    case Maker::OutFormat::PDF:
-        return extPDF;
-    case Maker::OutFormat::CSV:
-        return extCSV;
-    case Maker::OutFormat::TXT:
-        return extTXT;
-    default:
-        return {};
-    }
-}
-
-
-
-QString MakerPvt::getFileName()
-{
-    auto __format=QStringLiteral("%1.%2");
-#ifdef QT_DEBUG
-    return __format.arg("report", this->getExtension());
-#else
-    return __format.arg(QUuid::createUuid().toString(), this->getExtension());
-#endif
-}
-
-QString QRmk::MakerPvt::parserText(const QVariant &valueParser, const QVariantHash &itemRecord)
-{
-    auto __return=valueParser.toString();
-    static const auto __env="${";
-    static const auto __format=QString{"${%1}"};
-    if(!__return.contains(__env))
-        return __return;
-    for(auto &header: this->headers.list()){
-        auto env=__format.arg(header->field()).toLower();
-        if(__return.contains(env)){
-            auto val=itemRecord.value(header->field());
-            auto replaceValue=header->toFormattedValue(val);
-            __return=__return.replace(env, replaceValue);
-        }
-    }
-    return __return.trimmed();
-}
-
-
-
-QVariant MakerPvt::parserValue(const QVariant &valueParser, const QVariantHash &itemRecord)
-{
-    switch (valueParser.typeId()) {
-    case QMetaType::UnknownType:
-    case QMetaType::QString:
-    case QMetaType::QByteArray:
-        break;
-    default:
-        return valueParser;
-    }
-
-    return parserText(valueParser, itemRecord);
-}
-
-
-
-QString MakerPvt::printPDF()
+QString MakerPvt::makerPDF()
 {
     auto vRecordList=this->makeRecords();
 
@@ -636,15 +688,14 @@ QString MakerPvt::printPDF()
     this->textOffSetB=(this->textOffSetB>0)?this->textOffSetB:(this->spacing*2);
     this->totalHeight=(this->totalHeight>0)?this->totalHeight:(painter.viewport().height());
     this->totalWidth=(this->totalWidth>0)?this->totalWidth:painter.viewport().width();
-    this->rowHeight=(this->rowHeight>0)?this->rowHeight:(totalHeight*0.02);
+    this->rowHeight=(this->rowHeight>0)?this->rowHeight:(totalHeight*rowFactor);
     this->maxRows=(maxRows>0)?maxRows:this->getLines();
 
-    QHash<Header*, QRect> columnsRow, columnsHeaders, columnsSummary;
+    QHash<Header*, QPair<QRect,QRect>> columnsHeaders, columnsSummary;
 
     {//calc columns rectangle
 
 
-        int startX=0, startY=0;
         Q_DECLARE_VU;
 
         double sumWidth=0;
@@ -669,64 +720,59 @@ QString MakerPvt::printPDF()
 
         static const double factor=1.2;
         this->rowWidth=0;
+        int startX=0, startY=0;
         {
-            QRect rect={};
+            //QRect rect={};
             auto pointLine=QPoint{0,0};
             columnsHeaders.clear();
             for(auto header : this->headersList){
                 double per=vu.toDouble(header->width());
-                int w=(totalWidth*per);
+                double w=(totalWidth*per);
                 this->rowWidth+=w;
-                int h=this->rowHeight;
-                rect=QRect{pointLine.x(), startY, w, h};
-                columnsRow.insert(header, rect);
-                rect=QRect{pointLine.x(), startY, w, int(h*factor)};
-                columnsHeaders.insert(header, rect);
+                auto rectHeader=QRect{pointLine.x(), startY, int(w), int(this->rowHeight)};
+                auto rectText=QRect{pointLine.x(), startY, int(w-textOffSetR), rectHeader.height()};
+                columnsHeaders.insert(header, QPair<QRect,QRect>(rectHeader, rectText));
+
                 pointLine.setX(startX+=w);
             }
         }
+        rectSingleRow=QRect(0,0, startX, int(this->rowHeight*factor));
 
         {//summary headers calc
-            double cumativeWidth=0;
-            for(auto header : this->headersList){
+            int startX=-1;
+            double endWidth=0;
+            for(auto header : headersList){
+                auto rectBase = columnsHeaders.value(header).first;
 
-                if(!this->summary.contains(header->field())){
-                    cumativeWidth+=vu.toDouble(header->width());
-                    continue;
+                auto headerSummary=this->summary.at(header->field());
+
+                if(headerSummary==nullptr){
+                    if(startX<rectBase.x())
+                        startX=rectBase.x();
+                    if(header==headersList.last()){
+                        endWidth=rectBase.width();
+                    }
+                    else{
+                        endWidth+=rectBase.x()+rectBase.width();
+                        continue;
+                    }
+                }
+                else{
+                    if(startX<0)
+                        startX=rectBase.x();
+                    endWidth+=rectBase.width();
                 }
 
-                auto newHeader=this->headersSummary.isEmpty()?nullptr:this->headersSummary.last();
-                if(!newHeader){
-                    newHeader=new Header{this};
-                    headersSummary.append(newHeader);
-                }
 
-                auto perNew=cumativeWidth+vu.toDouble(header->width());
-                cumativeWidth=0;
-                auto withNew=__formatWidth.arg(QString::number(perNew,'f',6));
-                header->width(withNew);
-            }
+                startX=(startX<0)?0:startX;
+                auto rectHeader=QRect(startX, startY, endWidth, rectBase.height());
+                auto rectText=QRect(startX+textOffSetL, startY, endWidth-(textOffSetR), rectBase.height());
+                columnsSummary.insert(header, QPair<QRect,QRect>(rectHeader, rectText));
 
-            QRect rect={};
-            auto pointLine=QPoint{0,0};
-            columnsSummary.clear();
-            for(auto header : this->headersSummary){
-                double per=vu.toDouble(header->width());
-                int w=(totalWidth*per);
-                this->rowWidth+=w;
-                int h=this->rowHeight;
-                rect=QRect{pointLine.x(), startY, w, h};
-                columnsRow.insert(header, rect);
-                rect=QRect{pointLine.x(), startY, w, int(h*factor)};
-                columnsSummary.insert(header, rect);
-                pointLine.setX(startX+=w);
+                startX=-1;
+                endWidth=0;
             }
         }
-
-
-
-
-        rectSingleRow=QRect(0,0, startX, int(this->rowHeight*factor));
     }
     rectFull=(rectFull.width()>0)?rectFull:QRect(0, 0, rowWidth, rowHeight);
 
@@ -783,57 +829,66 @@ QString MakerPvt::printPDF()
         totalPageInfo=rect.height();
     };
 
-    auto writeColumnsFull=[this, &nextY, &startY, &painter, &columnsHeaders]()//draw headers
+    auto writeLineHeaders=[this, &nextY, &startY, &painter, &columnsHeaders]()//draw headers
     {
         nextY();
         painter.setFont(fontNormal);
         const auto &headers=headersList;
         const auto &columnsRect=columnsHeaders;
         for(auto header : headers){
-            auto value=header->title();
-            auto rectBase = columnsRect.value(header);
+            auto rectBase = columnsRect.value(header).first;
             auto rect=QRect(rectBase.x(), startY, rectBase.width(), rectBase.height());
+            auto value=header->title();
 
             painter.setBrush(Qt::lightGray);
             painter.setPen(Qt::black);
             painter.drawRect(rect);
 
-            rect=QRect(rectBase.x()+textOffSetL, startY/*+textOffSetL*/, rectBase.width()-(textOffSetR), rectBase.height()/*-textOffSetB*/);
-
+            rectBase = columnsRect.value(header).second;
+            rect=QRect(rectBase.x()+textOffSetL, startY, rectBase.width(), rectBase.height());
             painter.setBrush(Qt::NoBrush);
             painter.setPen(Qt::black);
             QRect boundingRect;
             painter.drawText(rect, Qt::AlignCenter | Qt::TextWordWrap, value, &boundingRect);
         }
-        nextY(0.2);
+        //nextY(rowFactorSeparator);
     };
 
-    auto writeColumnsSummary=[this, &nextY, &startY, &painter, &columnsSummary]()//draw headers
+    auto writeSummaryLineHeaders=[this,/* &nextY,*/ &startY, &painter, &columnsSummary]()//draw headers
     {
-        nextY();
+        //nextY();
         painter.setFont(fontNormal);
-        const auto &headers=headersSummary;
-        const auto &columnsRect=columnsSummary;
-        for(auto header : headers){
+
+        for(auto header : this->headers.list()){
+            if(!columnsSummary.contains(header))
+                continue;
+
+            auto pair=columnsSummary.value(header);
+            auto rectBase = pair.first;
             auto value=header->title();
-            auto rectBase = columnsRect.value(header);
-            auto rect=QRect(rectBase.x(), startY, rectBase.width(), rectBase.height());
+
+            QRect rect={};
+
+            rect=QRect(rectBase.x(), startY, rectBase.width(), rectBase.height());
 
             painter.setBrush(Qt::lightGray);
             painter.setPen(Qt::black);
             painter.drawRect(rect);
 
-            rect=QRect(rectBase.x()+textOffSetL, startY/*+textOffSetL*/, rectBase.width()-(textOffSetR), rectBase.height()/*-textOffSetB*/);
+            rectBase = pair.second;
+            rect=QRect(rectBase.x(), startY, rectBase.width(), rectBase.height());
 
-            painter.setBrush(Qt::NoBrush);
-            painter.setPen(Qt::black);
-            QRect boundingRect;
-            painter.drawText(rect, Qt::AlignCenter | Qt::TextWordWrap, value, &boundingRect);
+            if(this->summary.contains(header->field())){
+                painter.setBrush(Qt::NoBrush);
+                painter.setPen(Qt::black);
+                QRect boundingRect;
+                painter.drawText(rect, Qt::AlignCenter | Qt::TextWordWrap, value, &boundingRect);
+            }
         }
-        nextY(0.2);
+        //nextY(rowFactorSeparator);
     };
 
-    auto writeLine=[this, &nextY, &startY, &painter, &columnsRow](const QVariantHash &itemRow)//draw headers
+    auto writeLine=[this, &nextY, &startY, &painter](const QHash<Header*, QPair<QRect,QRect>> &columnsRow, const QVariantHash &itemRow)//draw headers
     {
         nextY();
         int startX=-1;
@@ -841,13 +896,14 @@ QString MakerPvt::printPDF()
         for(auto &header : headersList){
             auto value=itemRow.value(header->field()).toString();
 
-            auto rectBase = columnsRow.value(header);
+            auto rectBase = columnsRow.value(header).first;
             auto rect=QRect(rectBase.x(), startY, rectBase.width(), rectBase.height());
 
             painter.setBrush(Qt::NoBrush);
             painter.setPen(Qt::black);
             painter.drawRect(rect);
 
+            rectBase = columnsRow.value(header).second;
             rect=QRect(rectBase.x()+textOffSetL, startY+textOffSetL, rectBase.width()-textOffSetR, rectBase.height()-textOffSetB);
             painter.setBrush(Qt::NoBrush);
             painter.setPen(Qt::black);
@@ -859,7 +915,7 @@ QString MakerPvt::printPDF()
         }
     };
 
-    auto writeReportValues=[this, &writeLine](const QVariantHash &itemRecord)//draw headers
+    auto writeLineValues=[this, &writeLine, &columnsHeaders](const QVariantHash &itemRecord)//draw headers
     {
         QVariantHash itemRowFormatted;
         for(auto &header : headersList){
@@ -876,7 +932,27 @@ QString MakerPvt::printPDF()
             itemRowFormatted.insert(header->field(), value);
 
         }
-        writeLine(itemRowFormatted);
+        writeLine(columnsHeaders, itemRowFormatted);
+    };
+
+    auto writeSummaryLineValues=[this, &writeLine, &columnsSummary](const QVariantHash &itemRecord)//draw headers
+    {
+        QVariantHash itemRowFormatted;
+        for(auto &header : headersList){
+            auto value=itemRecord.value(header->field());
+
+            if(value.isValid())
+                value=header->toFormattedValue(value);
+
+            if(!header->format().isEmpty())
+                value=this->parserText(header->format(), itemRecord);
+            else
+                value=this->parserText(value, itemRecord);
+
+            itemRowFormatted.insert(header->field(), value);
+
+        }
+        writeLine(columnsSummary,itemRowFormatted);
     };
 
     auto writeSingleLine=[this, &nextY, &itemRecord, /*&startY, */&painter](const QVariant &outItem)//draw headers
@@ -939,7 +1015,7 @@ QString MakerPvt::printPDF()
         painter.setPen(Qt::black);
         painter.drawText(rectangle, Qt::AlignHCenter | Qt::AlignVCenter, textLine.join(__spaceJoin), &boundingRect);
 
-        nextY(0.2);
+        nextY(rowFactorSeparator);
 
     };
 
@@ -949,12 +1025,12 @@ QString MakerPvt::printPDF()
         writePageInfo();
     };
 
-    auto pageStart=[&rowCount, &vRecordList, &writeColumnsFull, &writePageInfo]()
+    auto pageStart=[&rowCount, &vRecordList, &writeLineHeaders, &writePageInfo]()
     {
         rowCount=0;
         writePageInfo();
         if(!vRecordList.isEmpty())
-            writeColumnsFull();
+            writeLineHeaders();
     };
 
     auto pageNew=[&pdfWriter, &pageStart]()
@@ -1113,23 +1189,21 @@ QString MakerPvt::printPDF()
             break;
         case RowHeader:{
             if(!rowType.equal(lastRowType))
-                writeColumnsFull();
+                writeLineHeaders();
             break;
         }
         case RowValues:
-            writeReportValues(itemRecord);
+            writeLineValues(itemRecord);
+            break;
+        case RowSummaryValues:
+            writeSummaryLineValues(itemRecord);
             break;
         case RowSingle:
             writeSingleLine(itemValue);
             break;
         case RowSummaryGrouping:
-            writeReportValues(itemRecord);
-            break;
-        case RowSummaryHeader:
-            writeColumnsSummary();
-            break;
         case RowSummaryTotal:
-            writeReportValues(itemRecord);
+            writeSummaryLineHeaders();
             break;
         case RowSignature:
             writeSignatures(itemRecord);
@@ -1157,9 +1231,7 @@ QString MakerPvt::printPDF()
     return __return;
 }
 
-
-
-QString MakerPvt::printCSV_TXT()
+QString MakerPvt::makeCSV_TXT()
 {
     Q_DECLARE_FU;
     QByteArray separator=this->getColumnSeparator();
@@ -1204,52 +1276,5 @@ QString MakerPvt::printCSV_TXT()
 
 
 
-QByteArray MakerPvt::fieldValueAlign(Header *header, const QString &value)
-{
-    int length=header->length();
-    if(length<=0){
-        switch (header->dataType()) {
-        case Header::String:
-        case Header::Uuid:
-            length=10;
-            break;
-        case Header::Integer:
-        case Header::Number:
-        case Header::Double:
-        case Header::Currency:
-            length=11;
-            break;
-        case Header::Boolean:
-            length=3;
-            break;
-        case Header::Date:
-            length=10;
-            break;
-        case Header::Time:
-            length=8;
-            break;
-        case Header::DateTime:
-            length=19;
-            break;
-        default:
-            break;
-        }
-
-    }
-
-
-    auto text=value.trimmed();
-    switch (header->align()) {
-    case Header::Alignment::Start:
-        return text.leftJustified(length,' ',true).toLatin1();
-    case Header::Alignment::End:
-        return text.rightJustified(length,' ', true).toLatin1();
-    default://Header::Alignment::Center
-        bool odd=false;
-        while(text.length()<length)
-            text=odd?(' '+text):(text+' ');
-        return text.toLatin1();
-    }
-}
 
 }
