@@ -39,22 +39,7 @@ public:
     int lines=0;
     QByteArray columnSeparator;
     bool columnTabular=true;
-
-    double textOffSetT=0;
-    double textOffSetL=0;
-    double textOffSetR=0;
-    double textOffSetB=0;
-    double totalHeight=0;
-    double totalWidth=0;
-    int maxRows=0;
-    double spacing=0;
-    double rowWidth=0;
-    double rowHeight=0;
     QStringList extraPageInfo;
-    QRect rectFull={};
-    QRect rectSingleRow={};
-    QList<Header *> headersList;
-    QList<Header *> headersSummary;
 
     explicit MakerPvt(Maker *parent=nullptr);
 
@@ -83,21 +68,36 @@ public:
 
     const QVariantList &makeRecords();
 
-    QString makerPDF();
 
-    QString makeCSV_TXT();
+    QString textWrite();
 
 private:
-    QFont fontNormal=QFont{__fontDefault, 8};
-    QFont fontBold=fontNormal;
-    QFont fontItalic=fontNormal;
+
+    int pdfStartY=0, pdfTotalPageInfo=0;
+    int pdfRowCount=0, pdfPageCount=0;
+    int pdfRowsMax=0;
+    double pdfTextOffSetT=0;
+    double pdfTextOffSetL=0;
+    double pdfTextOffSetR=0;
+    double pdfTextOffSetB=0;
+    double pdfTotalHeight=0;
+    double pdfTotalWidth=0;
+    double pdfRowSpacing=0;
+    double pdfRowWidth=0;
+    double pdfRowHeight=0;
+    QRect pdfRectFull={};
+    QRect pdfRectSingleRow={};
+    QList<Header *> pdfHeadersList;
+    QList<Header *> pdfHeadersSummary;
+
+    QFont pdfFontNormal=QFont{__fontDefault, 8};
+    QFont pdfFontBold=pdfFontNormal;
+    QFont pdfFontItalic=pdfFontNormal;
     QPdfWriter *pdfWriter=nullptr;
-    QVariantHash itemRecord;
-    QPainter *painter=nullptr;
-    QHash<Header*, QPair<QRect,QRect>> columnsHeaders, columnsSummary;
-    int startY=0, totalPageInfo=0;
-    int rowCount=0, pageCount=0;
-    QString __time;
+    QVariantHash pdfItemRecord;
+    QPainter *pdfPainter=nullptr;
+    QHash<Header*, QPair<QRect,QRect>> pdfColumnsHeaders, pdfColumnsSummary;
+    QString pdfTimeText;
 private://pdf
     double pdfNextY(double factor=1);
     void pdfWritePageInfo();//draw headers
@@ -113,8 +113,8 @@ private://pdf
     void pdfWriteSummaryLineValues(const QVariantHash &itemRecord);//draw headers
     void pdfWriteSingleLine(const QVariant &outItem);//draw headers
     void pdfWriteSignatures(const QVariantHash &itemRecord);
-
-
+public:
+    QString pdfWrite();
 
 };
 

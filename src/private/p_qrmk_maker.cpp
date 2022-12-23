@@ -94,20 +94,20 @@ void MakerPvt::clear()
     this->groupingDisplay.clear();
     this->groupingFields.clear();
     this->extraPageInfo.clear();
-    this->headersList.clear();
+    this->pdfHeadersList.clear();
     this->headers.clear();
     this->summary.clear();
-    qDeleteAll(headersSummary);
-    headersSummary.clear();
+    qDeleteAll(pdfHeadersSummary);
+    pdfHeadersSummary.clear();
 }
 
 void MakerPvt::prepare()
 {
-    this->headersList.clear();
-    this->headersSummary.clear();
+    this->pdfHeadersList.clear();
+    this->pdfHeadersSummary.clear();
     for(auto header : this->headers.list()){
         if(header->visible())
-            headersList.append(header);
+            pdfHeadersList.append(header);
     }
 
     for(auto &header:this->summary.list()){
@@ -121,9 +121,9 @@ void MakerPvt::prepare()
         if(header->format().isEmpty() && !h.format().isEmpty())
             header->format(h.format());
 
-        this->headersSummary.append(header);
+        this->pdfHeadersSummary.append(header);
     }
-    this->maxRows=(maxRows>0)?maxRows:this->getLines();
+    this->pdfRowsMax=(pdfRowsMax>0)?pdfRowsMax:this->getLines();
 }
 
 int MakerPvt::getLines()
@@ -644,161 +644,7 @@ const QVariantList &MakerPvt::makeRecords()
     return outPutRecord;
 }
 
-QString MakerPvt::makerPDF()
-{
-    this->makeRecords();
-
-    if(outPutRecord.isEmpty())
-        return {};
-
-#ifdef QT_DEBUG
-    auto file=QFile(getFileName());
-    if(!file.open(QFile::Truncate | QFile::WriteOnly | QFile::Unbuffered))
-        return {};
-#else
-    auto file=QTemporaryFile(getFileName(), parent);
-    file.setAutoRemove(false);
-    if(!file.open())
-        return {};
-
-#endif
-
-    //static const double factor=1.2;
-
-    pdfWriter=new QPdfWriter(&file);
-    painter=new QPainter(pdfWriter);
-    painter->setBrush(Qt::NoBrush);
-    painter->setPen(Qt::black);
-    fontBold.setBold(true);
-    fontItalic.setItalic(true);
-    painter->setFont(fontNormal);
-
-    pdfWriter->setPageSize(QPageSize::A4);
-    switch (this->orientation.type()) {
-    case Maker::Orientation::Landscape:
-        pdfWriter->setPageOrientation(QPageLayout::Orientation::Landscape);
-        break;
-    default:
-        pdfWriter->setPageOrientation(QPageLayout::Orientation::Portrait);
-        break;
-    }
-
-
-    this->spacing=(this->spacing>0)?this->spacing:(pdfWriter->width()*0.005);
-    this->textOffSetT=(this->textOffSetL>0)?this->textOffSetT:(this->spacing);
-    this->textOffSetL=(this->textOffSetL>0)?this->textOffSetL:(this->spacing);
-    this->textOffSetR=(this->textOffSetR>0)?this->textOffSetR:(this->spacing*2);
-    this->textOffSetB=(this->textOffSetB>0)?this->textOffSetB:(this->spacing*2);
-    this->totalHeight=(this->totalHeight>0)?this->totalHeight:(painter->viewport().height());
-    this->totalWidth=(this->totalWidth>0)?this->totalWidth:painter->viewport().width();
-    this->rowHeight=(this->rowHeight>0)?this->rowHeight:(totalHeight*rowFactor);
-    this->maxRows=(maxRows>0)?maxRows:this->getLines();
-    this->startY=0;
-    this->totalPageInfo=0;
-    this->rowCount=0;
-    this->pageCount=0;
-    this->rowWidth=0;
-
-
-    {//calc columns rectangle
-
-
-        Q_DECLARE_VU;
-
-        double sumWidth=0;
-        for(auto header : this->headersList){
-            sumWidth+=vu.toDouble(header->width());
-        }
-
-        if(sumWidth>0){//width ajust
-            double diff=(1.00-sumWidth);
-            double diffWidth=totalWidth*diff;
-            for(auto header : this->headersList){
-                auto per=vu.toDouble(header->width());
-                auto curWidth=(totalWidth*per);
-                auto incWidth=(diffWidth*per);
-                auto width=(curWidth+incWidth);
-                auto perNew=(width/totalWidth)*100;
-                static const auto __formatWidth=QString("%1%");
-                auto withNew=__formatWidth.arg(QString::number(perNew,'f',6));
-                header->width(withNew);
-            }
-        }
-
-
-
-        int startX=0, startY=0;
-        {
-            //QRect rect={};
-            auto pointLine=QPoint{0,0};
-            columnsHeaders.clear();
-            for(auto header : this->headersList){
-                double per=vu.toDouble(header->width());
-                double w=(totalWidth*per);
-                this->rowWidth+=w;
-                auto rectHeader=QRect{pointLine.x(), startY, int(w), int(this->rowHeight)};
-                auto rectText=QRect{pointLine.x(), startY, int(w-textOffSetR), rectHeader.height()};
-                columnsHeaders.insert(header, QPair<QRect,QRect>(rectHeader, rectText));
-
-                pointLine.setX(startX+=w);
-            }
-        }
-        rectSingleRow=QRect(0,0, startX, int(this->rowHeight*rowFactor));
-
-        {//summary headers calc
-            int startX=-1;
-            double endWidth=0;
-            for(auto header : headersList){
-                auto rectBase = columnsHeaders.value(header).first;
-
-                auto headerSummary=this->summary.at(header->field());
-
-                if(headerSummary==nullptr){
-                    if(startX<rectBase.x())
-                        startX=rectBase.x();
-                    if(header==headersList.last()){
-                        endWidth=rectBase.width();
-                    }
-                    else{
-                        endWidth+=rectBase.x()+rectBase.width();
-                        continue;
-                    }
-                }
-                else{
-                    if(startX<0)
-                        startX=rectBase.x();
-                    endWidth+=rectBase.width();
-                }
-
-
-                startX=(startX<0)?0:startX;
-                auto rectHeader=QRect(startX, startY, endWidth, rectBase.height());
-                auto rectText=QRect(startX+textOffSetL, startY, endWidth-(textOffSetR), rectBase.height());
-                columnsSummary.insert(header, QPair<QRect,QRect>(rectHeader, rectText));
-
-                startX=-1;
-                endWidth=0;
-            }
-        }
-    }
-    rectFull=(rectFull.width()>0)?rectFull:QRect(0, 0, rowWidth, rowHeight);
-
-
-
-    FormattingUtil fu;
-    this->__time=tr("Emissão: %1 %2").arg(fu.v(QDate::currentDate()),fu.v(QTime::currentTime()));
-
-    parseList(outPutRecord);
-    painter->end();
-
-    auto __return=file.fileName();
-
-    file.flush();
-    file.close();
-    return __return;
-}
-
-QString MakerPvt::makeCSV_TXT()
+QString MakerPvt::textWrite()
 {
     Q_DECLARE_FU;
     QByteArray separator=this->getColumnSeparator();
@@ -809,7 +655,7 @@ QString MakerPvt::makeCSV_TXT()
 
     {
         QByteArray line=separator;
-        for(auto header : this->headersList){
+        for(auto header : this->pdfHeadersList){
             auto value=header->title().toUtf8().trimmed().replace(' ','_');
             if(this->columnTabular)
                 value=fieldValueAlign(header, value);
@@ -824,7 +670,7 @@ QString MakerPvt::makeCSV_TXT()
         for(auto &row : this->items){
             auto itemRow=row.toHash();
             QByteArray line=separator;
-            for(auto &header : this->headersList){
+            for(auto &header : this->pdfHeadersList){
                 auto value=itemRow.value(header->field()).toString();
                 value=header->toFormattedValue(value);
                 if(this->columnTabular)
@@ -843,8 +689,8 @@ QString MakerPvt::makeCSV_TXT()
 
 double QRmk::MakerPvt::pdfNextY(double factor)
 {
-    rowCount+=(factor>=1)?factor:1;
-    return (startY+=(rowHeight*factor));
+    pdfRowCount+=(factor>=1)?factor:1;
+    return (pdfStartY+=(pdfRowHeight*factor));
 }
 
 void QRmk::MakerPvt::pdfWritePageInfo()
@@ -852,64 +698,64 @@ void QRmk::MakerPvt::pdfWritePageInfo()
     auto totalLinesInfo=2;//time+page
     totalLinesInfo+=this->extraPageInfo.count();
 
-    auto infoH=(rowHeight*totalLinesInfo);
+    auto infoH=(pdfRowHeight*totalLinesInfo);
 
-    auto rect=QRect(spacing, startY=spacing, rowWidth-textOffSetR, infoH-textOffSetB);
-    painter->setFont(fontNormal);
-    painter->setBrush(Qt::NoBrush);
-    painter->setPen(Qt::black);
-    painter->drawText(rect, Qt::AlignRight, __time);
+    auto rect=QRect(pdfRowSpacing, pdfStartY=pdfRowSpacing, pdfRowWidth-pdfTextOffSetR, infoH-pdfTextOffSetB);
+    pdfPainter->setFont(pdfFontNormal);
+    pdfPainter->setBrush(Qt::NoBrush);
+    pdfPainter->setPen(Qt::black);
+    pdfPainter->drawText(rect, Qt::AlignRight, pdfTimeText);
 
     for(auto extra:this->extraPageInfo){
-        extra=this->parserText(extra,itemRecord);
+        extra=this->parserText(extra,pdfItemRecord);
         if(extra.isEmpty())
             continue;
         rect.setY(pdfNextY());
-        painter->drawText(rect, Qt::AlignRight, extra);
+        pdfPainter->drawText(rect, Qt::AlignRight, extra);
     }
     static const auto __page=tr("Página: %1");
     rect.setY(pdfNextY());
-    painter->drawText(rect, Qt::AlignRight, __page.arg(++pageCount));
+    pdfPainter->drawText(rect, Qt::AlignRight, __page.arg(++pdfPageCount));
 
     if(!this->title.isEmpty()){
-        painter->setFont(fontBold);
-        painter->drawText(rect, Qt::AlignHCenter, this->title);
+        pdfPainter->setFont(pdfFontBold);
+        pdfPainter->drawText(rect, Qt::AlignHCenter, this->title);
     }
 
     if(!this->owner.isEmpty()){
-        painter->setFont(fontItalic);
-        painter->drawText(rect, Qt::AlignLeft, this->owner);
+        pdfPainter->setFont(pdfFontItalic);
+        pdfPainter->drawText(rect, Qt::AlignLeft, this->owner);
     }
 
-    int maxW=rowWidth;
-    rect=QRect{0, 0, maxW, startY+rect.height()};
-    painter->setBrush(Qt::NoBrush);
-    painter->setPen(Qt::black);
-    painter->drawRect(rect);
-    totalPageInfo=rect.height();
+    int maxW=pdfRowWidth;
+    rect=QRect{0, 0, maxW, pdfStartY+rect.height()};
+    pdfPainter->setBrush(Qt::NoBrush);
+    pdfPainter->setPen(Qt::black);
+    pdfPainter->drawRect(rect);
+    pdfTotalPageInfo=rect.height();
 }
 
 void QRmk::MakerPvt::pdfWriteLineHeaders()
 {
     pdfNextY();
-    painter->setFont(fontNormal);
-    const auto &headers=headersList;
-    const auto &columnsRect=columnsHeaders;
+    pdfPainter->setFont(pdfFontNormal);
+    const auto &headers=pdfHeadersList;
+    const auto &columnsRect=pdfColumnsHeaders;
     for(auto header : headers){
         auto rectBase = columnsRect.value(header).first;
-        auto rect=QRect(rectBase.x(), startY, rectBase.width(), rectBase.height());
+        auto rect=QRect(rectBase.x(), pdfStartY, rectBase.width(), rectBase.height());
         auto value=header->title();
 
-        painter->setBrush(Qt::lightGray);
-        painter->setPen(Qt::black);
-        painter->drawRect(rect);
+        pdfPainter->setBrush(Qt::lightGray);
+        pdfPainter->setPen(Qt::black);
+        pdfPainter->drawRect(rect);
 
         rectBase = columnsRect.value(header).second;
-        rect=QRect(rectBase.x()+textOffSetL, startY, rectBase.width(), rectBase.height());
-        painter->setBrush(Qt::NoBrush);
-        painter->setPen(Qt::black);
+        rect=QRect(rectBase.x()+pdfTextOffSetL, pdfStartY, rectBase.width(), rectBase.height());
+        pdfPainter->setBrush(Qt::NoBrush);
+        pdfPainter->setPen(Qt::black);
         QRect boundingRect;
-        painter->drawText(rect, Qt::AlignCenter | Qt::TextWordWrap, value, &boundingRect);
+        pdfPainter->drawText(rect, Qt::AlignCenter | Qt::TextWordWrap, value, &boundingRect);
     }
     //nextY(rowFactorSeparator);
 }
@@ -917,32 +763,32 @@ void QRmk::MakerPvt::pdfWriteLineHeaders()
 void QRmk::MakerPvt::pdfWriteSummaryLineHeaders()
 {
     //nextY();
-    painter->setFont(fontNormal);
+    pdfPainter->setFont(pdfFontNormal);
 
     for(auto header : this->headers.list()){
-        if(!columnsSummary.contains(header))
+        if(!pdfColumnsSummary.contains(header))
             continue;
 
-        auto pair=columnsSummary.value(header);
+        auto pair=pdfColumnsSummary.value(header);
         auto rectBase = pair.first;
         auto value=header->title();
 
         QRect rect={};
 
-        rect=QRect(rectBase.x(), startY, rectBase.width(), rectBase.height());
+        rect=QRect(rectBase.x(), pdfStartY, rectBase.width(), rectBase.height());
 
-        painter->setBrush(Qt::lightGray);
-        painter->setPen(Qt::black);
-        painter->drawRect(rect);
+        pdfPainter->setBrush(Qt::lightGray);
+        pdfPainter->setPen(Qt::black);
+        pdfPainter->drawRect(rect);
 
         rectBase = pair.second;
-        rect=QRect(rectBase.x(), startY, rectBase.width(), rectBase.height());
+        rect=QRect(rectBase.x(), pdfStartY, rectBase.width(), rectBase.height());
 
         if(this->summary.contains(header->field())){
-            painter->setBrush(Qt::NoBrush);
-            painter->setPen(Qt::black);
+            pdfPainter->setBrush(Qt::NoBrush);
+            pdfPainter->setPen(Qt::black);
             QRect boundingRect;
-            painter->drawText(rect, Qt::AlignCenter | Qt::TextWordWrap, value, &boundingRect);
+            pdfPainter->drawText(rect, Qt::AlignCenter | Qt::TextWordWrap, value, &boundingRect);
         }
     }
     //nextY(rowFactorSeparator);
@@ -952,23 +798,23 @@ void QRmk::MakerPvt::pdfWriteLine(const QHash<Header *, QPair<QRect, QRect> > &c
 {
     pdfNextY();
     int startX=-1;
-    painter->setFont(fontNormal);
-    for(auto &header : headersList){
+    pdfPainter->setFont(pdfFontNormal);
+    for(auto &header : pdfHeadersList){
         auto value=itemRow.value(header->field()).toString();
 
         auto rectBase = columnsRow.value(header).first;
-        auto rect=QRect(rectBase.x(), startY, rectBase.width(), rectBase.height());
+        auto rect=QRect(rectBase.x(), pdfStartY, rectBase.width(), rectBase.height());
 
-        painter->setBrush(Qt::NoBrush);
-        painter->setPen(Qt::black);
-        painter->drawRect(rect);
+        pdfPainter->setBrush(Qt::NoBrush);
+        pdfPainter->setPen(Qt::black);
+        pdfPainter->drawRect(rect);
 
         rectBase = columnsRow.value(header).second;
-        rect=QRect(rectBase.x()+textOffSetL, startY+textOffSetL, rectBase.width()-textOffSetR, rectBase.height()-textOffSetB);
-        painter->setBrush(Qt::NoBrush);
-        painter->setPen(Qt::black);
+        rect=QRect(rectBase.x()+pdfTextOffSetL, pdfStartY+pdfTextOffSetL, rectBase.width()-pdfTextOffSetR, rectBase.height()-pdfTextOffSetB);
+        pdfPainter->setBrush(Qt::NoBrush);
+        pdfPainter->setPen(Qt::black);
         QRect boundingRect;
-        painter->drawText(rect, header->alignQt(), value, &boundingRect);
+        pdfPainter->drawText(rect, header->alignQt(), value, &boundingRect);
 
         if(startX==-1)
             startX=rect.x();
@@ -978,7 +824,7 @@ void QRmk::MakerPvt::pdfWriteLine(const QHash<Header *, QPair<QRect, QRect> > &c
 void QRmk::MakerPvt::pdfWriteLineValues(const QVariantHash &itemRecord)
 {
     QVariantHash itemRowFormatted;
-    for(auto &header : headersList){
+    for(auto &header : pdfHeadersList){
         auto value=itemRecord.value(header->field());
 
         if(value.isValid())
@@ -992,7 +838,7 @@ void QRmk::MakerPvt::pdfWriteLineValues(const QVariantHash &itemRecord)
         itemRowFormatted.insert(header->field(), value);
 
     }
-    pdfWriteLine(columnsHeaders, itemRowFormatted);
+    pdfWriteLine(pdfColumnsHeaders, itemRowFormatted);
 }
 
 void QRmk::MakerPvt::pdfParseRow(const RowType &rowType, const QVariantHash &itemValue)
@@ -1076,7 +922,7 @@ void QRmk::MakerPvt::parseList(QVariantList &vRecordList)
         if(vRecordList.isEmpty())
             break;
 
-        if((this->maxRows>0) && (this->maxRows<=++rowCount)){
+        if((this->pdfRowsMax>0) && (this->pdfRowsMax<=++pdfRowCount)){
             if(&item!=&this->items.last())
                 pdfPageNew();
         }
@@ -1091,7 +937,7 @@ void QRmk::MakerPvt::pdfPageBlank()
 
 void QRmk::MakerPvt::pdfPageStart()
 {
-    rowCount=0;
+    pdfRowCount=0;
     pdfWritePageInfo();
     if(!this->outPutRecord.isEmpty())
         pdfWriteLineHeaders();
@@ -1106,7 +952,7 @@ void QRmk::MakerPvt::pdfPageNew()
 void QRmk::MakerPvt::pdfWriteSummaryLineValues(const QVariantHash &itemRecord)
 {
     QVariantHash itemRowFormatted;
-    for(auto &header : headersList){
+    for(auto &header : pdfHeadersList){
         auto value=itemRecord.value(header->field());
 
         if(value.isValid())
@@ -1120,15 +966,15 @@ void QRmk::MakerPvt::pdfWriteSummaryLineValues(const QVariantHash &itemRecord)
         itemRowFormatted.insert(header->field(), value);
 
     }
-    pdfWriteLine(columnsSummary,itemRowFormatted);
+    pdfWriteLine(pdfColumnsSummary,itemRowFormatted);
 }
 
 void QRmk::MakerPvt::pdfWriteSingleLine(const QVariant &outItem)
 {
-    if(headersList.isEmpty())
+    if(pdfHeadersList.isEmpty())
         return;
     pdfNextY(1.5);
-    painter->setFont(fontBold);
+    pdfPainter->setFont(pdfFontBold);
     QStringList textLine;
     switch (outItem.typeId()) {
     case QMetaType::QVariantPair:
@@ -1136,14 +982,14 @@ void QRmk::MakerPvt::pdfWriteSingleLine(const QVariant &outItem)
     case QMetaType::QVariantMap:
     {
         auto itemRow=outItem.toHash();
-        for(auto &header : headersList){
+        for(auto &header : pdfHeadersList){
             auto value=itemRow.value(header->field());
 
             if(value.isNull() && !value.isValid())
                 continue;
 
             auto valueText=header->toFormattedValue(value);
-            valueText=this->parserText(valueText, itemRecord);
+            valueText=this->parserText(valueText, pdfItemRecord);
             static const auto __format=QString("%1: %2");
             if(!header->title().isEmpty() && !valueText.isEmpty())
                 textLine.append(__format.arg(header->title(), valueText));
@@ -1158,7 +1004,7 @@ void QRmk::MakerPvt::pdfWriteSingleLine(const QVariant &outItem)
         Q_DECLARE_VU;
         auto v=vu.toStr(outItem).trimmed();
         if(!v.isEmpty()){
-            v=this->parserText(v, itemRecord);
+            v=this->parserText(v, pdfItemRecord);
             textLine.append(v);
         }
         break;
@@ -1168,20 +1014,20 @@ void QRmk::MakerPvt::pdfWriteSingleLine(const QVariant &outItem)
         return;
 
 
-    Header *header=headersList.first();
+    Header *header=pdfHeadersList.first();
     if(header==nullptr)
         return;
 
     QRect boundingRect;
-    auto rectangle=QRect(rectSingleRow.x(), pdfNextY(1.2), rectSingleRow.width(), rectSingleRow.height());
+    auto rectangle=QRect(pdfRectSingleRow.x(), pdfNextY(1.2), pdfRectSingleRow.width(), pdfRectSingleRow.height());
 
-    painter->setBrush(Qt::lightGray);
-    painter->setPen(Qt::black);
-    painter->drawRect(rectangle);
+    pdfPainter->setBrush(Qt::lightGray);
+    pdfPainter->setPen(Qt::black);
+    pdfPainter->drawRect(rectangle);
 
-    painter->setBrush(Qt::NoBrush);
-    painter->setPen(Qt::black);
-    painter->drawText(rectangle, Qt::AlignHCenter | Qt::AlignVCenter, textLine.join(__spaceJoin), &boundingRect);
+    pdfPainter->setBrush(Qt::NoBrush);
+    pdfPainter->setPen(Qt::black);
+    pdfPainter->drawText(rectangle, Qt::AlignHCenter | Qt::AlignVCenter, textLine.join(__spaceJoin), &boundingRect);
 
     pdfNextY(rowFactorSeparator);
 }
@@ -1194,7 +1040,7 @@ void QRmk::MakerPvt::pdfWriteSignatures(const QVariantHash &itemRecord)
     Q_DECLARE_VU;
 
     auto areaMinH=vu.toDouble(this->signature.pageArea().height);
-    auto areaCurH=(startY/this->totalHeight);
+    auto areaCurH=(pdfStartY/this->pdfTotalHeight);
     {//area check
         if(areaMinH>areaCurH)
             pdfPageBlank();
@@ -1204,20 +1050,20 @@ void QRmk::MakerPvt::pdfWriteSignatures(const QVariantHash &itemRecord)
         pdfPageBlank();
 
 
-    const auto rectSignature=QRect(0, pdfNextY(2), this->rowWidth, (this->totalHeight-(startY+totalPageInfo)));
+    const auto rectSignature=QRect(0, pdfNextY(2), this->pdfRowWidth, (this->pdfTotalHeight-(pdfStartY+pdfTotalPageInfo)));
 
-    QRect rectTitle=QRect(0, pdfNextY(0), rowWidth, rowHeight);
+    QRect rectTitle=QRect(0, pdfNextY(0), pdfRowWidth, pdfRowHeight);
     if(!this->signature.title().isEmpty()){//title
 
-        auto font=fontBold;
+        auto font=pdfFontBold;
         font.setPointSize(font.pointSize()+2);
-        painter->setFont(font);
-        painter->setBrush(Qt::NoBrush);
-        painter->setPen(Qt::black);
+        pdfPainter->setFont(font);
+        pdfPainter->setBrush(Qt::NoBrush);
+        pdfPainter->setPen(Qt::black);
 
         rectTitle.setY(pdfNextY(2));
         QRect boundingRect;
-        painter->drawText(rectTitle, Qt::AlignCenter, this->signature.title(), &boundingRect);
+        pdfPainter->drawText(rectTitle, Qt::AlignCenter, this->signature.title(), &boundingRect);
     }
 
     {//declarations
@@ -1228,98 +1074,250 @@ void QRmk::MakerPvt::pdfWriteSignatures(const QVariantHash &itemRecord)
 
             auto declarationRows=this->signature.declaration().count()*1.3;
 
-            auto wArea=totalWidth*0.66;
-            auto startX=((totalWidth/2)-(wArea/2));
-            auto rect=QRect(startX, pdfNextY(2), wArea, (rowHeight*declarationRows));
+            auto wArea=pdfTotalWidth*0.66;
+            auto startX=((pdfTotalWidth/2)-(wArea/2));
+            auto rect=QRect(startX, pdfNextY(2), wArea, (pdfRowHeight*declarationRows));
             auto declaration=this->signature.declaration().join(" ");
             declaration=this->parserText(declaration, itemRecord);
 
-            auto font=fontNormal;
+            auto font=pdfFontNormal;
             font.setPointSize(font.pointSize()+2);
-            painter->setFont(font);
+            pdfPainter->setFont(font);
 
-            painter->setBrush(Qt::NoBrush);
-            painter->setPen(Qt::black);
-            auto pen=painter->pen();
+            pdfPainter->setBrush(Qt::NoBrush);
+            pdfPainter->setPen(Qt::black);
+            auto pen=pdfPainter->pen();
             pen.setWidth(pen.width()*10);
-            painter->setPen(pen);
-            painter->drawRect(rect);
+            pdfPainter->setPen(pen);
+            pdfPainter->drawRect(rect);
 
-            rect=QRect(rect.x()+textOffSetL, rect.y()+textOffSetT, rect.width()-textOffSetR, rect.height()-textOffSetB);
+            rect=QRect(rect.x()+pdfTextOffSetL, rect.y()+this->pdfTextOffSetL, rect.width()-pdfTextOffSetR, rect.height()-pdfTextOffSetB);
             QRect boundingRect;
-            painter->drawText(rect, Qt::AlignLeft | Qt::AlignVCenter | Qt::AlignJustify | Qt::TextWordWrap, declaration, &boundingRect);
-            startY=rect.y()+rect.height();
+            pdfPainter->drawText(rect, Qt::AlignLeft | Qt::AlignVCenter | Qt::AlignJustify | Qt::TextWordWrap, declaration, &boundingRect);
+            pdfStartY=rect.y()+rect.height();
         }
     }
 
     if(!this->signature.localFormatted().isEmpty()){//title
-        auto rect=QRect(0, pdfNextY(2),rowWidth,rowHeight);
-        auto font=fontNormal;
+        auto rect=QRect(0, pdfNextY(2),pdfRowWidth,pdfRowHeight);
+        auto font=pdfFontNormal;
         font.setPointSize(font.pointSize()+2);
-        painter->setFont(font);
-        painter->setBrush(Qt::NoBrush);
-        painter->setPen(Qt::black);
+        pdfPainter->setFont(font);
+        pdfPainter->setBrush(Qt::NoBrush);
+        pdfPainter->setPen(Qt::black);
 
         QRect boundingRect;
-        painter->drawText(rect, Qt::AlignCenter, this->signature.localFormatted(), &boundingRect);
+        pdfPainter->drawText(rect, Qt::AlignCenter, this->signature.localFormatted(), &boundingRect);
     }
 
     if(!this->signature.signatures().isEmpty()){//title
-        auto font=fontNormal;
+        auto font=pdfFontNormal;
         font.setPointSize(font.pointSize()+2);
-        painter->setFont(font);
-        painter->setBrush(Qt::NoBrush);
-        painter->setPen(Qt::black);
+        pdfPainter->setFont(font);
+        pdfPainter->setBrush(Qt::NoBrush);
+        pdfPainter->setPen(Qt::black);
 
         const auto __startY=pdfNextY(3);
 
         auto rows=this->signature.signatures().count();
-        auto wArea=(totalWidth*vu.toDouble(this->signature.width()));
+        auto wArea=(pdfTotalWidth*vu.toDouble(this->signature.width()));
 
-        auto startX=(totalWidth/2)-((wArea*rows)/2);
+        auto startX=(pdfTotalWidth/2)-((wArea*rows)/2);
 
         for(auto &signature:this->signature.signatures()){
             if(signature->document().isEmpty() && signature->name().isEmpty())
                 continue;
 
-            startY=__startY;
+            pdfStartY=__startY;
 
-            auto rectSign=QRect(startX, pdfNextY(0), wArea, rowHeight);
-            startX+=(wArea+spacing);
+            auto rectSign=QRect(startX, pdfNextY(0), wArea, pdfRowHeight);
+            startX+=(wArea+pdfRowSpacing);
 
             {//line
                 auto rectLine=QRect(rectSign.x(), rectSign.y(), rectSign.width(), 1);
-                painter->setBrush(Qt::NoBrush);
-                painter->setPen(Qt::black);
-                painter->drawRect(rectLine);
+                pdfPainter->setBrush(Qt::NoBrush);
+                pdfPainter->setPen(Qt::black);
+                pdfPainter->drawRect(rectLine);
             }
 
             if(!signature->nameFormatted().isEmpty()){//Name
                 auto rect=QRect(rectSign.x(), pdfNextY(0.5), rectSign.width(), rectSign.height());
-                painter->setBrush(Qt::NoBrush);
-                painter->setPen(Qt::black);
+                pdfPainter->setBrush(Qt::NoBrush);
+                pdfPainter->setPen(Qt::black);
                 auto text=this->parserText(signature->name(), itemRecord);
                 QRect boundingRect;
-                painter->drawText(rect, Qt::AlignCenter, text, &boundingRect);
+                pdfPainter->drawText(rect, Qt::AlignCenter, text, &boundingRect);
             }
 
             if(!signature->documentFormatted().isEmpty()){//Document
                 Q_DECLARE_FU;
                 auto rect=QRect(rectSign.x(), pdfNextY(), rectSign.width(), rectSign.height());
-                painter->setBrush(Qt::NoBrush);
-                painter->setPen(Qt::black);
+                pdfPainter->setBrush(Qt::NoBrush);
+                pdfPainter->setPen(Qt::black);
                 auto text=this->parserText(signature->document(), itemRecord);
                 QRect boundingRect;
-                painter->drawText(rect, Qt::AlignCenter, text, &boundingRect);
+                pdfPainter->drawText(rect, Qt::AlignCenter, text, &boundingRect);
             }
         }
     }
 
     {
-        painter->setBrush(Qt::NoBrush);
-        painter->setPen(Qt::black);
-        painter->drawRect(rectSignature);
+        pdfPainter->setBrush(Qt::NoBrush);
+        pdfPainter->setPen(Qt::black);
+        pdfPainter->drawRect(rectSignature);
     }
+}
+
+QString MakerPvt::pdfWrite()
+{
+    this->makeRecords();
+
+    if(outPutRecord.isEmpty())
+        return {};
+
+#ifdef QT_DEBUG
+    auto file=QFile(getFileName());
+    if(!file.open(QFile::Truncate | QFile::WriteOnly | QFile::Unbuffered))
+        return {};
+#else
+    auto file=QTemporaryFile(getFileName(), parent);
+    file.setAutoRemove(false);
+    if(!file.open())
+        return {};
+
+#endif
+
+    //static const double factor=1.2;
+
+    pdfWriter=new QPdfWriter(&file);
+    pdfPainter=new QPainter(pdfWriter);
+    pdfPainter->setBrush(Qt::NoBrush);
+    pdfPainter->setPen(Qt::black);
+    pdfFontBold.setBold(true);
+    pdfFontItalic.setItalic(true);
+    pdfPainter->setFont(pdfFontNormal);
+
+    pdfWriter->setPageSize(QPageSize::A4);
+    switch (this->orientation.type()) {
+    case Maker::Orientation::Landscape:
+        pdfWriter->setPageOrientation(QPageLayout::Orientation::Landscape);
+        break;
+    default:
+        pdfWriter->setPageOrientation(QPageLayout::Orientation::Portrait);
+        break;
+    }
+
+
+    this->pdfRowSpacing=(this->pdfRowSpacing>0)?this->pdfRowSpacing:(pdfWriter->width()*0.005);
+    this->pdfTextOffSetT=(this->pdfTextOffSetL>0)?this->pdfTextOffSetL:(this->pdfRowSpacing);
+    this->pdfTextOffSetL=(this->pdfTextOffSetL>0)?this->pdfTextOffSetL:(this->pdfRowSpacing);
+    this->pdfTextOffSetR=(this->pdfTextOffSetR>0)?this->pdfTextOffSetR:(this->pdfRowSpacing*2);
+    this->pdfTextOffSetB=(this->pdfTextOffSetB>0)?this->pdfTextOffSetB:(this->pdfRowSpacing*2);
+    this->pdfTotalHeight=(this->pdfTotalHeight>0)?this->pdfTotalHeight:(pdfPainter->viewport().height());
+    this->pdfTotalWidth=(this->pdfTotalWidth>0)?this->pdfTotalWidth:pdfPainter->viewport().width();
+    this->pdfRowHeight=(this->pdfRowHeight>0)?this->pdfRowHeight:(pdfTotalHeight*rowFactor);
+    this->pdfRowsMax=(pdfRowsMax>0)?pdfRowsMax:this->getLines();
+    this->pdfStartY=0;
+    this->pdfTotalPageInfo=0;
+    this->pdfRowCount=0;
+    this->pdfPageCount=0;
+    this->pdfRowWidth=0;
+
+
+    {//calc columns rectangle
+
+
+        Q_DECLARE_VU;
+
+        double sumWidth=0;
+        for(auto header : this->pdfHeadersList){
+            sumWidth+=vu.toDouble(header->width());
+        }
+
+        if(sumWidth>0){//width ajust
+            double diff=(1.00-sumWidth);
+            double diffWidth=pdfTotalWidth*diff;
+            for(auto header : this->pdfHeadersList){
+                auto per=vu.toDouble(header->width());
+                auto curWidth=(pdfTotalWidth*per);
+                auto incWidth=(diffWidth*per);
+                auto width=(curWidth+incWidth);
+                auto perNew=(width/pdfTotalWidth)*100;
+                static const auto __formatWidth=QString("%1%");
+                auto withNew=__formatWidth.arg(QString::number(perNew,'f',6));
+                header->width(withNew);
+            }
+        }
+
+
+
+        int startX=0, startY=0;
+        {
+            //QRect rect={};
+            auto pointLine=QPoint{0,0};
+            pdfColumnsHeaders.clear();
+            for(auto header : this->pdfHeadersList){
+                double per=vu.toDouble(header->width());
+                double w=(pdfTotalWidth*per);
+                this->pdfRowWidth+=w;
+                auto rectHeader=QRect{pointLine.x(), startY, int(w), int(this->pdfRowHeight)};
+                auto rectText=QRect{pointLine.x(), startY, int(w-pdfTextOffSetR), rectHeader.height()};
+                pdfColumnsHeaders.insert(header, QPair<QRect,QRect>(rectHeader, rectText));
+
+                pointLine.setX(startX+=w);
+            }
+        }
+        pdfRectSingleRow=QRect(0,0, startX, int(this->pdfRowHeight*rowFactor));
+
+        {//summary headers calc
+            int startX=-1;
+            double endWidth=0;
+            for(auto header : pdfHeadersList){
+                auto rectBase = pdfColumnsHeaders.value(header).first;
+
+                auto headerSummary=this->summary.at(header->field());
+
+                if(headerSummary==nullptr){
+                    if(startX<rectBase.x())
+                        startX=rectBase.x();
+                    if(header==pdfHeadersList.last()){
+                        endWidth=rectBase.width();
+                    }
+                    else{
+                        endWidth+=rectBase.x()+rectBase.width();
+                        continue;
+                    }
+                }
+                else{
+                    if(startX<0)
+                        startX=rectBase.x();
+                    endWidth+=rectBase.width();
+                }
+
+
+                startX=(startX<0)?0:startX;
+                auto rectHeader=QRect(startX, startY, endWidth, rectBase.height());
+                auto rectText=QRect(startX+pdfTextOffSetL, startY, endWidth-(pdfTextOffSetR), rectBase.height());
+                pdfColumnsSummary.insert(header, QPair<QRect,QRect>(rectHeader, rectText));
+
+                startX=-1;
+                endWidth=0;
+            }
+        }
+    }
+    pdfRectFull=(pdfRectFull.width()>0)?pdfRectFull:QRect(0, 0, pdfRowWidth, pdfRowHeight);
+
+    FormattingUtil fu;
+    this->pdfTimeText=tr("Emissão: %1 %2").arg(fu.v(QDate::currentDate()),fu.v(QTime::currentTime()));
+
+    parseList(outPutRecord);
+    pdfPainter->end();
+
+    auto __return=file.fileName();
+
+    file.flush();
+    file.close();
+    return __return;
 }
 
 
