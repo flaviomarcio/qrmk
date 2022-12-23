@@ -5,12 +5,14 @@
 #include <QPen>
 #include <QTextDocument>
 #include <QAbstractTextDocumentLayout>
+#include <QTime>
 #include "../qstm/src/qstm_meta_enum.h"
 #include "../qrmk_maker.h"
 #include "../qstm/src/qstm_util_variant.h"
 
 namespace QRmk{
 
+static const auto __fontDefault="Sans Serif";
 
 class MakerPvt:public QObject{
     enum RowType{
@@ -84,6 +86,35 @@ public:
     QString makerPDF();
 
     QString makeCSV_TXT();
+
+private:
+    QFont fontNormal=QFont{__fontDefault, 8};
+    QFont fontBold=fontNormal;
+    QFont fontItalic=fontNormal;
+    QPdfWriter *pdfWriter=nullptr;
+    QVariantHash itemRecord;
+    QPainter *painter=nullptr;
+    QHash<Header*, QPair<QRect,QRect>> columnsHeaders, columnsSummary;
+    int startY=0, totalPageInfo=0;
+    int rowCount=0, pageCount=0;
+    QString __time;
+private://pdf
+    double pdfNextY(double factor=1);
+    void pdfWritePageInfo();//draw headers
+    void pdfWriteLineHeaders();
+    void pdfWriteSummaryLineHeaders();//draw headers
+    void pdfWriteLine(const QHash<Header*, QPair<QRect,QRect>> &columnsRow, const QVariantHash &itemRow);
+    void pdfWriteLineValues(const QVariantHash &itemRecord);//draw headers
+    void pdfParseRow(const QRmk::MakerPvt::RowType &rowType, const QVariantHash &itemValue={});
+    void parseList(QVariantList &vRecordList);
+    void pdfPageBlank();
+    void pdfPageStart();
+    void pdfPageNew();
+    void pdfWriteSummaryLineValues(const QVariantHash &itemRecord);//draw headers
+    void pdfWriteSingleLine(const QVariant &outItem);//draw headers
+    void pdfWriteSignatures(const QVariantHash &itemRecord);
+
+
 
 };
 
