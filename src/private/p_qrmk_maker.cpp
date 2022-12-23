@@ -1,9 +1,9 @@
 #include "./p_qrmk_maker.h"
 #include "../qstm/src/qstm_util_formatting.h"
 #include "../qstm/src/qstm_meta_enum.h"
+#include <cmath>
 
 namespace QRmk{
-
 
 static const auto extPDF="pdf";
 static const auto extCSV="csv";
@@ -17,16 +17,45 @@ static const auto __spaceJoin=", ";
 static const auto __rowType="__row_type__";
 static const auto __rowValue="__row_value__";
 
-static const auto __total=QObject::tr("Totalização");
-static const auto __totalFinal=QObject::tr("Totalização final");
+static const auto __totalTitle=QObject::tr("Totalização final");
 
 typedef QVector<QByteArray> PropertyNames;
 
 Q_GLOBAL_STATIC_WITH_ARGS(PropertyNames, staticIgnoreMethods,({"objectName","values","measures","asJson", "measures", "baseValues", "clearOnSetFail"}))
 
 
+struct ItemRow{
+public:
+    MakerPvt::RowType rowType;
+    QVariant rowValue;
+    QVariant value;
+    explicit ItemRow(const QVariant &v={}){
+        auto vHash=v.toHash();
+        QStm::MetaEnum<MakerPvt::RowType> rowType=vHash.value(__rowType);
+        this->value=v;
+        this->rowType=rowType.type();
+        this->rowValue=vHash[__rowValue];
+    };
+    bool isValid()const{
+        return (this->rowType!=MakerPvt::RowNONE);
+    }
+    auto toHash(){
+        return this->rowValue.toHash();
+    }
+    auto toList(){
+        return this->rowValue.toList();
+    }
+    void clear(){
+        this->rowType=MakerPvt::RowNONE;
+        this->rowValue={};
+        this->value={};
+    }
+};
+
+
+
 static const double rowFactor=0.02;
-static const double rowFactorSeparator=0.2;
+static const double rowFactorSeparator=1;
 
 static const QVariantHash extractHash(const QObject *object, const QStringList &ignoreProperties)
 {
@@ -123,7 +152,7 @@ void MakerPvt::prepare()
 
         this->pdfHeadersSummary.append(header);
     }
-    this->pdfRowsMax=(pdfRowsMax>0)?pdfRowsMax:this->getLines();
+    this->pdfRowsMax=this->getLines();
 }
 
 int MakerPvt::getLines()
@@ -132,9 +161,9 @@ int MakerPvt::getLines()
         return this->lines;
     switch (this->orientation.type()) {
     case Maker::Orientation::Landscape:
-        return 60;
+        return 40;
     default://Maker::Portrait
-        return 90;
+        return 48;
     }
 }
 
@@ -277,22 +306,13 @@ const QVariantList &MakerPvt::makeRecords()
     auto writeLine=[&writeObject](const RowType rowType, const QVariant &rowValue){
         writeObject(rowType, rowValue);
     };
-//    auto writeColumns=[&writeLine, &lastRowType](RowType rowType=RowHeader, const QVariant &values={})//draw headers
-//    {
-//        if(lastRowType==rowType)
-//            return;
-//        writeLine(rowType, values);
-//    };
-//    auto writeSingleLine=[&writeLine](const QVariant &outItem, RowType rowType=RowSingle)//draw headers
-//    {
-//        writeLine(rowType, outItem);
-//    };
+
     auto writeLineValues=[&writeLine](const QVariantHash &itemRecord)//draw headers
     {
         writeLine(RowValues, itemRecord);
     };
 
-    auto writeSummary=[this, &itemRecord, &writeObject, &makeObject](const QVariantList &vSummaryList, RowType rowType, const QString &singleRowText)
+    auto writeSummary=[this, &itemRecord, &writeObject, &makeObject](const QVariantList &vSummaryList, RowType rowType)
     {
         Q_UNUSED(rowType)
 
@@ -524,8 +544,8 @@ const QVariantList &MakerPvt::makeRecords()
         }
         if(!vFinalSummaryRows.isEmpty()){
             QVariantList vOut;
-            if(!singleRowText.trimmed().isEmpty())
-                vOut.append(makeObject(RowSingle, singleRowText));
+//            if(!singleRowText.trimmed().isEmpty())
+//                vOut.append(makeObject(RowSingle, singleRowText));
 
             for(auto &value:vFinalSummaryRows)
                 vOut.append(makeObject(RowSummaryValues, value));
@@ -535,34 +555,34 @@ const QVariantList &MakerPvt::makeRecords()
         return true;
     };
 
-    auto makeSingleLine=[this, &itemRecord](){
-        if(this->groupingFields.isEmpty())
-            return QString{};
-        QStringList vLine;
-        if(!this->groupingDisplay.trimmed().isEmpty()){
-            vLine.append(this->parserText(this->groupingDisplay, itemRecord));
-        }
-        else{
-            for(auto&headerName: this->groupingFields){
-                if(!this->headers.contains(headerName))
-                    continue;
-                static const auto __format=QString("%1: %2");
-                auto &header=this->headers.header(headerName);
-                auto value=header.toValue(itemRecord.value(header.field()));
+//    auto makeSingleLine=[this, &itemRecord](){
+//        if(this->groupingFields.isEmpty())
+//            return QString{};
+//        QStringList vLine;
+//        if(!this->groupingDisplay.trimmed().isEmpty()){
+//            vLine.append(this->parserText(this->groupingDisplay, itemRecord));
+//        }
+//        else{
+//            for(auto&headerName: this->groupingFields){
+//                if(!this->headers.contains(headerName))
+//                    continue;
+//                static const auto __format=QString("%1: %2");
+//                auto &header=this->headers.header(headerName);
+//                auto value=header.toValue(itemRecord.value(header.field()));
 
-                QString valueText;
-                valueText=this->parserText(value, itemRecord);
-                if(!header.title().trimmed().isEmpty())
-                    vLine.append(__format.arg(header.title(), valueText));
-                vLine.append(valueText);
-            }
-        }
-        return vLine.join(__spaceJoin).trimmed();
-    };
+//                QString valueText;
+//                valueText=this->parserText(value, itemRecord);
+//                if(!header.title().trimmed().isEmpty())
+//                    vLine.append(__format.arg(header.title(), valueText));
+//                vLine.append(valueText);
+//            }
+//        }
+//        return vLine.join(__spaceJoin).trimmed();
+//    };
 
     QVariantHash vLastRow;
     QVariantList vSummaryRows;
-    auto groupingCheck=[this, &vLastRow, &vSummaryRows, &writeSummary, &makeSingleLine](const QVariantHash &itemRecord, bool lastSummary=false)//draw headers
+    auto groupingCheck=[this, &vLastRow, &vSummaryRows, &writeSummary](const QVariantHash &itemRecord, bool lastSummary=false)//draw headers
     {
         Q_DECLARE_VU;
 
@@ -599,18 +619,12 @@ const QVariantList &MakerPvt::makeRecords()
                 return false;
             }
         }
-        writeSummary(vSummaryRows, RowSummaryGrouping, makeSingleLine());
+        writeSummary(vSummaryRows, RowSummaryGrouping);
         vLastRow=itemRecord;
         vSummaryRows.clear();
         vSummaryRows.append(itemRecord);//rows to group summary
         return true;
     };
-
-//    auto pageStart=[&writeLine, &makeSingleLine, &writeSingleLine](const QVariantHash &itemRecord){
-//        writeLine(RowPageInfo,itemRecord);
-//        writeSingleLine(makeSingleLine());
-//        writeColumns();
-//    };
 
     auto writeSignatures=[this, &writeLine](const QVariant &itemRecord)
     {
@@ -622,9 +636,7 @@ const QVariantList &MakerPvt::makeRecords()
     {//write pages
         itemRecord=(this->items.isEmpty())?itemRecord:this->items.first().toHash();
         //pageStart(itemRecord);
-        writeObject(RowPageInfo,itemRecord);
-        writeObject(RowSingle, makeSingleLine());
-        writeObject(RowHeader);
+        writeObject(RowStart,itemRecord);
         for(auto &item: this->items){
             auto vHash=item.toHash();
             if(vHash.contains(__rowType) && vHash.contains(__rowValue)){
@@ -638,7 +650,7 @@ const QVariantList &MakerPvt::makeRecords()
 
     groupingCheck({},true);
 
-    writeSummary(this->items, RowSummaryTotal, __totalFinal);
+    writeSummary(this->items, RowSummaryTotal);
     writeSignatures(itemRecord);
 
     return outPutRecord;
@@ -689,7 +701,8 @@ QString MakerPvt::textWrite()
 
 double QRmk::MakerPvt::pdfNextY(double factor)
 {
-    pdfRowCount+=(factor>=1)?factor:1;
+    auto fac=round(factor);
+    pdfRowCount+=fac+(fac<factor?1:0);
     return (pdfStartY+=(pdfRowHeight*factor));
 }
 
@@ -735,6 +748,32 @@ void QRmk::MakerPvt::pdfWritePageInfo()
     pdfTotalPageInfo=rect.height();
 }
 
+QString QRmk::MakerPvt::pdfMakeSingleLine()
+{
+    if(this->groupingFields.isEmpty())
+        return QString{};
+    QStringList vLine;
+    if(!this->groupingDisplay.trimmed().isEmpty()){
+        vLine.append(this->parserText(this->groupingDisplay, pdfItemRecord));
+    }
+    else{
+        for(auto&headerName: this->groupingFields){
+            if(!this->headers.contains(headerName))
+                continue;
+            static const auto __format=QString("%1: %2");
+            auto &header=this->headers.header(headerName);
+            auto value=header.toValue(pdfItemRecord.value(header.field()));
+
+            QString valueText;
+            valueText=this->parserText(value, pdfItemRecord);
+            if(!header.title().trimmed().isEmpty())
+                vLine.append(__format.arg(header.title(), valueText));
+            vLine.append(valueText);
+        }
+    }
+    return vLine.join(__spaceJoin).trimmed();
+}
+
 void QRmk::MakerPvt::pdfWriteLineHeaders()
 {
     pdfNextY();
@@ -757,14 +796,12 @@ void QRmk::MakerPvt::pdfWriteLineHeaders()
         QRect boundingRect;
         pdfPainter->drawText(rect, Qt::AlignCenter | Qt::TextWordWrap, value, &boundingRect);
     }
-    //nextY(rowFactorSeparator);
 }
 
 void QRmk::MakerPvt::pdfWriteSummaryLineHeaders()
 {
-    //nextY();
     pdfPainter->setFont(pdfFontNormal);
-
+    pdfNextY();
     for(auto header : this->headers.list()){
         if(!pdfColumnsSummary.contains(header))
             continue;
@@ -791,7 +828,6 @@ void QRmk::MakerPvt::pdfWriteSummaryLineHeaders()
             pdfPainter->drawText(rect, Qt::AlignCenter | Qt::TextWordWrap, value, &boundingRect);
         }
     }
-    //nextY(rowFactorSeparator);
 }
 
 void QRmk::MakerPvt::pdfWriteLine(const QHash<Header *, QPair<QRect, QRect> > &columnsRow, const QVariantHash &itemRow)
@@ -851,9 +887,12 @@ void QRmk::MakerPvt::pdfParseRow(const RowType &rowType, const QVariantHash &ite
         vType=rowType;
 
     switch (vType.type()) {
-    case RowPageInfo:
+    case RowStart:{
         pdfWritePageInfo();
+        pdfWriteSingleLine(this->pdfMakeSingleLine());
+        pdfWriteLineHeaders();
         break;
+    }
     case RowHeader:{
         pdfWriteLineHeaders();
         break;
@@ -867,10 +906,16 @@ void QRmk::MakerPvt::pdfParseRow(const RowType &rowType, const QVariantHash &ite
     case RowSingle:
         pdfWriteSingleLine(itemValue);
         break;
-    case RowSummaryGrouping:
-    case RowSummaryTotal:
+    case RowSummaryGrouping:{
+        pdfWriteSingleLine(this->pdfMakeSingleLine());
         pdfWriteSummaryLineHeaders();
         break;
+    }
+    case RowSummaryTotal:{
+        pdfWriteSingleLine(__totalTitle);
+        pdfWriteSummaryLineHeaders();
+        break;
+    }
     case RowSignature:
         pdfWriteSignatures(itemValue);
         break;
@@ -879,41 +924,69 @@ void QRmk::MakerPvt::pdfParseRow(const RowType &rowType, const QVariantHash &ite
     }
 }
 
-void QRmk::MakerPvt::parseList(QVariantList &vRecordList)
+void QRmk::MakerPvt::pdfParseList(QVariantList &vRecordList)
 {
     while(!vRecordList.isEmpty()){
-        auto item=vRecordList.takeFirst();
-        auto vHash=item.toHash();
-        auto &itemValue=vHash[__rowValue];
-        QStm::MetaEnum<RowType> rowType=vHash.value(__rowType);
-        switch (rowType.type()) {
-        case RowPageInfo:
+        auto itemRow=ItemRow(vRecordList.takeFirst());
+        auto itemRowNext=ItemRow(vRecordList.isEmpty()?QVariant{}:vRecordList.first());
+        this->pdfItemRecord=itemRow.toHash();
+        switch (itemRow.rowType) {
+        case RowStart:{
+            pdfParseRow(itemRow.rowType, {});
+            break;
+        }
         case RowHeader:
-            pdfParseRow(rowType.type(), {});
+            pdfParseRow(itemRow.rowType, {});
             break;
         case RowValues:
         case RowSummaryValues:
         case RowSingle:
-            pdfParseRow(rowType.type(), itemValue.toHash());
+            pdfParseRow(itemRow.rowType, this->pdfItemRecord);
             break;
         case RowSummaryGrouping:
         case RowSummaryTotal:{
-            pdfParseRow(rowType.type());
-            switch (itemValue.typeId()) {
-            case QMetaType::QVariantList:{
-                auto vList=itemValue.toList();
-                itemValue={};
-                parseList(vList);
+
+            if(itemRow.rowValue.typeId()!=QMetaType::QVariantList)
+                break;
+
+            auto vList=itemRow.toList();
+            if(vList.isEmpty())
+                break;
+
+            switch (itemRow.rowType) {
+            case RowSummaryTotal:{
+                pdfNextY(rowFactorSeparator);
+                pdfParseRow(itemRow.rowType);
                 break;
             }
             default:
-                pdfWriteSummaryLineHeaders();
+                pdfParseRow(itemRow.rowType);
                 break;
+            }
+
+            pdfParseList(vList);
+
+
+            itemRow.clear();
+            this->pdfItemRecord=itemRowNext.toHash();
+            if(!pdfPageNewCheck(4)){
+                if(!vRecordList.isEmpty()){
+                    pdfNextY(rowFactorSeparator);
+                    pdfWriteSingleLine(this->pdfMakeSingleLine());
+                    pdfWriteLineHeaders();
+                }
+            }
+            else if(pdfPageNewCheck(3)){
+                pdfPageNew();
+                if(!vRecordList.isEmpty()){
+                    pdfWriteSingleLine(this->pdfMakeSingleLine());
+                    pdfWriteLineHeaders();
+                }
             }
             break;
         }
         case RowSignature:
-            pdfWriteSignatures(itemValue.toHash());
+            pdfWriteSignatures(this->pdfItemRecord);
             break;
         default:
             break;
@@ -922,31 +995,57 @@ void QRmk::MakerPvt::parseList(QVariantList &vRecordList)
         if(vRecordList.isEmpty())
             break;
 
-        if((this->pdfRowsMax>0) && (this->pdfRowsMax<=++pdfRowCount)){
-            if(&item!=&this->items.last())
+        if(itemRowNext.isValid()){
+            if(pdfPageNewCheck()){
+                this->pdfItemRecord=itemRowNext.toHash();
                 pdfPageNew();
+                pdfWriteSingleLine(this->pdfMakeSingleLine());
+                pdfWriteLineHeaders();
+            }
         }
+
     }
 }
 
 void QRmk::MakerPvt::pdfPageBlank()
 {
     pdfWriter->newPage();
+    pdfPagePrepare();
     pdfWritePageInfo();
 }
 
 void QRmk::MakerPvt::pdfPageStart()
 {
-    pdfRowCount=0;
+    pdfPagePrepare();
     pdfWritePageInfo();
-    if(!this->outPutRecord.isEmpty())
-        pdfWriteLineHeaders();
+//    if(!this->outPutRecord.isEmpty())
+//        pdfWriteLineHeaders();
+}
+
+void QRmk::MakerPvt::pdfPagePrepare()
+{
+    pdfRowCount=0;
+    pdfStartY=0;
 }
 
 void QRmk::MakerPvt::pdfPageNew()
 {
     pdfWriter->newPage();
     pdfPageStart();
+}
+
+bool QRmk::MakerPvt::pdfPageNewCheck(int offSet)
+{
+    auto rowCount=this->pdfRowCount+offSet;
+    if((this->pdfRowsMax>0) && (this->pdfRowsMax<=rowCount)){
+        return true;
+    }
+    return {};
+
+//    if((this->pdfRowsMax>0) && (this->pdfRowsMax<=pdfRowCount)){
+//        if(&item!=&this->items.last())
+//            pdfPageNew();
+//    }
 }
 
 void QRmk::MakerPvt::pdfWriteSummaryLineValues(const QVariantHash &itemRecord)
@@ -973,7 +1072,7 @@ void QRmk::MakerPvt::pdfWriteSingleLine(const QVariant &outItem)
 {
     if(pdfHeadersList.isEmpty())
         return;
-    pdfNextY(1.5);
+
     pdfPainter->setFont(pdfFontBold);
     QStringList textLine;
     switch (outItem.typeId()) {
@@ -1019,7 +1118,7 @@ void QRmk::MakerPvt::pdfWriteSingleLine(const QVariant &outItem)
         return;
 
     QRect boundingRect;
-    auto rectangle=QRect(pdfRectSingleRow.x(), pdfNextY(1.2), pdfRectSingleRow.width(), pdfRectSingleRow.height());
+    auto rectangle=QRect(pdfRectSingleRow.x(), pdfNextY(), pdfRectSingleRow.width(), pdfRectSingleRow.height());
 
     pdfPainter->setBrush(Qt::lightGray);
     pdfPainter->setPen(Qt::black);
@@ -1028,8 +1127,6 @@ void QRmk::MakerPvt::pdfWriteSingleLine(const QVariant &outItem)
     pdfPainter->setBrush(Qt::NoBrush);
     pdfPainter->setPen(Qt::black);
     pdfPainter->drawText(rectangle, Qt::AlignHCenter | Qt::AlignVCenter, textLine.join(__spaceJoin), &boundingRect);
-
-    pdfNextY(rowFactorSeparator);
 }
 
 void QRmk::MakerPvt::pdfWriteSignatures(const QVariantHash &itemRecord)
@@ -1168,29 +1265,8 @@ void QRmk::MakerPvt::pdfWriteSignatures(const QVariantHash &itemRecord)
     }
 }
 
-QString MakerPvt::pdfWrite()
+void QRmk::MakerPvt::pdfPrepare()
 {
-    this->makeRecords();
-
-    if(outPutRecord.isEmpty())
-        return {};
-
-#ifdef QT_DEBUG
-    auto file=QFile(getFileName());
-    if(!file.open(QFile::Truncate | QFile::WriteOnly | QFile::Unbuffered))
-        return {};
-#else
-    auto file=QTemporaryFile(getFileName(), parent);
-    file.setAutoRemove(false);
-    if(!file.open())
-        return {};
-
-#endif
-
-    //static const double factor=1.2;
-
-    pdfWriter=new QPdfWriter(&file);
-    pdfPainter=new QPainter(pdfWriter);
     pdfPainter->setBrush(Qt::NoBrush);
     pdfPainter->setPen(Qt::black);
     pdfFontBold.setBold(true);
@@ -1208,6 +1284,10 @@ QString MakerPvt::pdfWrite()
     }
 
 
+    pdfColumnsHeaders.clear();
+    pdfColumnsSummary.clear();
+
+
     this->pdfRowSpacing=(this->pdfRowSpacing>0)?this->pdfRowSpacing:(pdfWriter->width()*0.005);
     this->pdfTextOffSetT=(this->pdfTextOffSetL>0)?this->pdfTextOffSetL:(this->pdfRowSpacing);
     this->pdfTextOffSetL=(this->pdfTextOffSetL>0)?this->pdfTextOffSetL:(this->pdfRowSpacing);
@@ -1217,11 +1297,11 @@ QString MakerPvt::pdfWrite()
     this->pdfTotalWidth=(this->pdfTotalWidth>0)?this->pdfTotalWidth:pdfPainter->viewport().width();
     this->pdfRowHeight=(this->pdfRowHeight>0)?this->pdfRowHeight:(pdfTotalHeight*rowFactor);
     this->pdfRowsMax=(pdfRowsMax>0)?pdfRowsMax:this->getLines();
-    this->pdfStartY=0;
     this->pdfTotalPageInfo=0;
     this->pdfRowCount=0;
     this->pdfPageCount=0;
     this->pdfRowWidth=0;
+    this->pdfPagePrepare();
 
 
     {//calc columns rectangle
@@ -1249,28 +1329,24 @@ QString MakerPvt::pdfWrite()
             }
         }
 
-
-
-        int startX=0, startY=0;
         {
+            int startX=0, startY=0, x=0;
             //QRect rect={};
-            auto pointLine=QPoint{0,0};
             pdfColumnsHeaders.clear();
             for(auto header : this->pdfHeadersList){
                 double per=vu.toDouble(header->width());
                 double w=(pdfTotalWidth*per);
                 this->pdfRowWidth+=w;
-                auto rectHeader=QRect{pointLine.x(), startY, int(w), int(this->pdfRowHeight)};
-                auto rectText=QRect{pointLine.x(), startY, int(w-pdfTextOffSetR), rectHeader.height()};
+                auto rectHeader=QRect{x, startY, int(w), int(this->pdfRowHeight)};
+                auto rectText=QRect{x, startY, int(w-pdfTextOffSetR), rectHeader.height()};
                 pdfColumnsHeaders.insert(header, QPair<QRect,QRect>(rectHeader, rectText));
-
-                pointLine.setX(startX+=w);
+                x=(startX+=w);
             }
+            pdfRectSingleRow=QRect(0, 0, startX, int(this->pdfRowHeight));
         }
-        pdfRectSingleRow=QRect(0,0, startX, int(this->pdfRowHeight*rowFactor));
 
         {//summary headers calc
-            int startX=-1;
+            int startX=-1, startY=0;
             double endWidth=0;
             for(auto header : pdfHeadersList){
                 auto rectBase = pdfColumnsHeaders.value(header).first;
@@ -1309,15 +1385,60 @@ QString MakerPvt::pdfWrite()
 
     FormattingUtil fu;
     this->pdfTimeText=tr("Emissão: %1 %2").arg(fu.v(QDate::currentDate()),fu.v(QTime::currentTime()));
+}
 
-    parseList(outPutRecord);
+QString MakerPvt::pdfWrite()
+{
+    this->makeRecords();
+
+    if(outPutRecord.isEmpty())
+        return {};
+
+    auto fileName=getFileName();
+
+#ifdef QT_DEBUG
+    auto file=QFile(fileName);
+    if(!file.open(QFile::Truncate | QFile::WriteOnly | QFile::Unbuffered))
+        return {};
+#else
+    auto file=QTemporaryFile(getFileName(), parent);
+    file.setAutoRemove(false);
+    if(!file.open())
+        return {};
+
+#endif
+
+    pdfWriter=new QPdfWriter(&file);
+    pdfPainter=new QPainter(pdfWriter);
+    pdfPrepare();
+
+    QVariantList secondList;
+
+    for(int i=outPutRecord.count()-1; i>=0; i--){
+        auto &v=outPutRecord[i];
+        auto item=ItemRow(v);
+        switch (item.rowType) {
+        case MakerPvt::RowSignature:
+        case MakerPvt::RowSummaryTotal:{
+            secondList.insert(0,v);
+            outPutRecord.removeAt(i);
+            break;
+        }
+        default:
+            break;
+        }
+    }
+    pdfParseList(outPutRecord);
+    for(auto&v:secondList){
+        auto vList=QVariantList({v});
+        pdfParseList(vList);
+    }
     pdfPainter->end();
-
-    auto __return=file.fileName();
-
     file.flush();
     file.close();
-    return __return;
+    delete pdfPainter;
+    delete pdfWriter;
+    return fileName;
 }
 
 

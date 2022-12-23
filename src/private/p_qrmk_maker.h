@@ -15,8 +15,9 @@ namespace QRmk{
 static const auto __fontDefault="Sans Serif";
 
 class MakerPvt:public QObject{
+public:
     enum RowType{
-        RowNONE, RowPageInfo, RowSingle, RowHeader, RowValues, RowSignature, RowSummaryGrouping, RowSummaryTotal, RowSummaryValues
+        RowNONE, RowStart, RowSingle, RowHeader, RowValues, RowSignature, RowSummaryGrouping, RowSummaryTotal, RowSummaryValues
     };
 
     Q_ENUM(RowType)
@@ -101,18 +102,22 @@ private:
 private://pdf
     double pdfNextY(double factor=1);
     void pdfWritePageInfo();//draw headers
+    QString pdfMakeSingleLine();
     void pdfWriteLineHeaders();
     void pdfWriteSummaryLineHeaders();//draw headers
     void pdfWriteLine(const QHash<Header*, QPair<QRect,QRect>> &columnsRow, const QVariantHash &itemRow);
     void pdfWriteLineValues(const QVariantHash &itemRecord);//draw headers
     void pdfParseRow(const QRmk::MakerPvt::RowType &rowType, const QVariantHash &itemValue={});
-    void parseList(QVariantList &vRecordList);
+    void pdfParseList(QVariantList &vRecordList);
     void pdfPageBlank();
     void pdfPageStart();
+    void pdfPagePrepare();
     void pdfPageNew();
+    bool pdfPageNewCheck(int offSet=0);
     void pdfWriteSummaryLineValues(const QVariantHash &itemRecord);//draw headers
     void pdfWriteSingleLine(const QVariant &outItem);//draw headers
     void pdfWriteSignatures(const QVariantHash &itemRecord);
+    void pdfPrepare();
 public:
     QString pdfWrite();
 
