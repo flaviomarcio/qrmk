@@ -1,8 +1,8 @@
 QT += testlib
 
+CONFIG += silent
 CONFIG += testcase
 CONFIG += console
-CONFIG += silent
 CONFIG -= debug_and_release
 
 TEMPLATE = app
