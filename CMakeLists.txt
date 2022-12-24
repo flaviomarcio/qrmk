@@ -11,8 +11,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(QT NAMES Qt6 REQUIRED COMPONENTS Core)
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core)
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Gui)
-find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Sql)
-find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Network)
+find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets)
 
 
 if(MSVC)
@@ -23,22 +22,11 @@ endif()
 
 #add_subdirectory(${CMAKE_SOURCE_DIR}/src)
 
-set(QRmk_SRCS
-    src/private/p_qrmk_maker.cpp
-    src/private/p_qrmk_maker.h
-    src/qrmk.h
-    src/qrmk_global.h
-    src/qrmk_header.cpp
-    src/qrmk_header.h
-    src/qrmk_headers.cpp
-    src/qrmk_headers.h
-    src/qrmk_maker.cpp
-    src/qrmk_maker.h
-    src/qrmk_signature.cpp
-    src/qrmk_signature.h
-    src/qrmk_signatures.cpp
-    src/qrmk_signatures.h
-)
+if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../qstm/src/cmake/src.cmake")
+  include(${CMAKE_CURRENT_SOURCE_DIR}/../qstm/src/cmake/src.cmake)
+endif()
+
+include(src/cmake/src.cmake)
 
 
 if(${CMAKE_SYSTEM_NAME} STREQUAL "Emscripten")
@@ -50,12 +38,16 @@ endif()
 
 target_link_libraries(QRmk PRIVATE Qt${QT_VERSION_MAJOR}::Core)
 target_link_libraries(QRmk PRIVATE Qt${QT_VERSION_MAJOR}::Gui)
+target_link_libraries(QRmk PRIVATE Qt${QT_VERSION_MAJOR}::Widgets)
 target_compile_definitions(QRmk PRIVATE QRmk_LIBRARY)
 
 target_link_libraries(
     QRmk # cmake-format: sortable
 )
 
+if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../qstm/src/cmake/src.cmake")
+  target_include_directories(QRmk PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../qstm/src)
+endif()
 
 install(TARGETS QRmk
     DESTINATION ${HOME}/qtreforce.sdk/lib

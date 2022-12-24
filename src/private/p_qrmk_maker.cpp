@@ -1,6 +1,6 @@
 #include "./p_qrmk_maker.h"
-#include "../qstm/src/qstm_util_formatting.h"
-#include "../qstm/src/qstm_meta_enum.h"
+#include "../../../qstm/src/qstm_util_formatting.h"
+#include "../../../qstm/src/qstm_meta_enum.h"
 #include <cmath>
 
 namespace QRmk{

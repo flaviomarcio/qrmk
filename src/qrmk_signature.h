@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../qstm/src/qstm_object_wrapper.h"
+#include "../../qstm/src/qstm_object_wrapper.h"
 #include "./qrmk_global.h"
 
 namespace QRmk{

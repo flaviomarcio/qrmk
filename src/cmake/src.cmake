@@ -1,0 +1,16 @@
+set(QRmk_SRCS
+    src/private/p_qrmk_maker.cpp
+    src/private/p_qrmk_maker.h
+    src/qrmk.h
+    src/qrmk_global.h
+    src/qrmk_header.cpp
+    src/qrmk_header.h
+    src/qrmk_headers.cpp
+    src/qrmk_headers.h
+    src/qrmk_maker.cpp
+    src/qrmk_maker.h
+    src/qrmk_signature.cpp
+    src/qrmk_signature.h
+    src/qrmk_signatures.cpp
+    src/qrmk_signatures.h
+)

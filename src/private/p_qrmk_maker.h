@@ -6,9 +6,9 @@
 #include <QTextDocument>
 #include <QAbstractTextDocumentLayout>
 #include <QTime>
-#include "../qstm/src/qstm_meta_enum.h"
+#include "../../../qstm/src/qstm_meta_enum.h"
+#include "../../../qstm/src/qstm_util_variant.h"
 #include "../qrmk_maker.h"
-#include "../qstm/src/qstm_util_variant.h"
 
 namespace QRmk{
 

@@ -8,7 +8,7 @@
 #include <QJsonDocument>
 #include "./qrmk_test_unit.h"
 #include "../src/qrmk.h"
-#include "../qstm/src/qstm_util_variant.h"
+#include "../../qstm/src/qstm_util_variant.h"
 
 namespace QRmk {
 
