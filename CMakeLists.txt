@@ -45,7 +45,7 @@ target_link_libraries(
     QRmk # cmake-format: sortable
 )
 
-if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../qstm/src/cmake/src.cmake")
+if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../qstm/src/src.cmake")
   target_include_directories(QRmk PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../qstm/src)
 endif()
 
