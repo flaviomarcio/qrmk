@@ -47,6 +47,7 @@ target_link_libraries(
 
 if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../qstm/src/src/src.cmake")
   target_include_directories(QRmk PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../qstm/src)
+  target_include_directories(QRmk PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../qstm/include)
 endif()
 
 install(TARGETS QRmk
