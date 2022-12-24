@@ -22,12 +22,11 @@ endif()
 
 #add_subdirectory(${CMAKE_SOURCE_DIR}/src)
 
-if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../qstm/src/cmake/src.cmake")
-  include(${CMAKE_CURRENT_SOURCE_DIR}/../qstm/src/cmake/src.cmake)
+if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../qstm/src/src.cmake")
+  include(${CMAKE_CURRENT_SOURCE_DIR}/../qstm/src/src.cmake)
 endif()
 
-include(src/cmake/src.cmake)
-
+include(${CMAKE_CURRENT_SOURCE_DIR}/src/src.cmake)
 
 if(${CMAKE_SYSTEM_NAME} STREQUAL "Emscripten")
     add_library(QRmk STATIC ${QRmk_SRCS})
@@ -39,13 +38,14 @@ endif()
 target_link_libraries(QRmk PRIVATE Qt${QT_VERSION_MAJOR}::Core)
 target_link_libraries(QRmk PRIVATE Qt${QT_VERSION_MAJOR}::Gui)
 target_link_libraries(QRmk PRIVATE Qt${QT_VERSION_MAJOR}::Widgets)
+
 target_compile_definitions(QRmk PRIVATE QRmk_LIBRARY)
 
 target_link_libraries(
     QRmk # cmake-format: sortable
 )
 
-if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../qstm/src/src.cmake")
+if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../qstm/src/src/src.cmake")
   target_include_directories(QRmk PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../qstm/src)
 endif()
 
