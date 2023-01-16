@@ -5,6 +5,10 @@
 
 namespace QRmk {
 
+static const auto __black="black";
+static const auto __transparent="transparent";
+
+
 class HeaderPvt:public QObject{
 public:
     QString field;
@@ -16,8 +20,8 @@ public:
     QStm::MetaEnum<Header::Alignment> align=Header::Alignment::Start;
     int order=0;
     QVariant width;
-    QColor foreGroundColor=Qt::black;
-    QColor backGroundColor=Qt::transparent;
+    QVariant foreGroundColor=__black;
+    QVariant backGroundColor=__transparent;
     QFont font=QApplication::font();
     bool visible=true;
     QStm::MetaEnum<Header::ComputeMode> computeMode=Header::ComputeMode::None;
@@ -300,12 +304,12 @@ Header &Header::resetWidth()
     return this->width({});
 }
 
-const QColor &Header::foreGroundColor() const
+const QVariant Header::foreGroundColor() const
 {
     return p->foreGroundColor;
 }
 
-Header &Header::foreGroundColor(const QColor &newColor)
+Header &Header::foreGroundColor(const QVariant &newColor)
 {
     if (p->foreGroundColor == newColor)
         return *this;
@@ -316,15 +320,15 @@ Header &Header::foreGroundColor(const QColor &newColor)
 
 Header &Header::resetForeGroundColor()
 {
-    return this->foreGroundColor(Qt::black);
+    return this->foreGroundColor(__black);
 }
 
-const QColor &Header::backGroundColor() const
+const QVariant &Header::backGroundColor() const
 {
     return p->backGroundColor;
 }
 
-Header &Header::backGroundColor(const QColor &newColor)
+Header &Header::backGroundColor(const QVariant &newColor)
 {
     if (p->backGroundColor == newColor)
         return *this;
@@ -335,7 +339,7 @@ Header &Header::backGroundColor(const QColor &newColor)
 
 Header &Header::resetBackGroundColor()
 {
-    return this->backGroundColor(Qt::transparent);
+    return this->backGroundColor(__transparent);
 }
 
 const QFont &Header::font() const

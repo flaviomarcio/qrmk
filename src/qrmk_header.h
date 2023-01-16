@@ -1,6 +1,5 @@
 #pragma once
 
-#include <QColor>
 #include <QFont>
 #include "../../qstm/src/qstm_object_wrapper.h"
 #include "./qrmk_global.h"
@@ -20,8 +19,8 @@ class Q_RMK_EXPORT Header : public QStm::ObjectWrapper
     Q_PROPERTY(Alignment align READ align WRITE align RESET resetAlign NOTIFY alignChanged)
     Q_PROPERTY(int order READ order WRITE order RESET resetOrder NOTIFY orderChanged)
     Q_PROPERTY(QVariant width READ width WRITE width RESET resetWidth NOTIFY widthChanged)
-    Q_PROPERTY(QColor foreGroundColor READ foreGroundColor WRITE foreGroundColor RESET resetForeGroundColor NOTIFY foreGroundColorChanged)
-    Q_PROPERTY(QColor backGroundColor READ backGroundColor WRITE backGroundColor RESET resetBackGroundColor NOTIFY backGroundColorChanged)
+    Q_PROPERTY(QVariant foreGroundColor READ foreGroundColor WRITE foreGroundColor RESET resetForeGroundColor NOTIFY foreGroundColorChanged)
+    Q_PROPERTY(QVariant backGroundColor READ backGroundColor WRITE backGroundColor RESET resetBackGroundColor NOTIFY backGroundColorChanged)
     Q_PROPERTY(QFont font READ font WRITE font RESET resetFont NOTIFY fontChanged)
     Q_PROPERTY(bool visible READ visible WRITE visible RESET resetVisible NOTIFY visibleChanged)
     Q_PROPERTY(ComputeMode computeMode READ computeMode WRITE computeMode RESET resetComputeMode NOTIFY computeModeChanged)
@@ -168,16 +167,16 @@ public:
     //! \brief foreGroundColor
     //! \return
     //!
-    const QColor &foreGroundColor() const;
-    Header &foreGroundColor(const QColor &newColor);
+    const QVariant foreGroundColor() const;
+    Header &foreGroundColor(const QVariant &newColor);
     Header &resetForeGroundColor();
 
     //!
     //! \brief backGroundColor
     //! \return
     //!
-    const QColor &backGroundColor() const;
-    Header &backGroundColor(const QColor &newColor);
+    const QVariant &backGroundColor() const;
+    Header &backGroundColor(const QVariant &newColor);
     Header &resetBackGroundColor();
 
     //!
