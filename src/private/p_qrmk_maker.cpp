@@ -381,7 +381,7 @@ const QVariantList &MakerPvt::makeRecords()
             if(this->groupingFields.isEmpty())
                 return QByteArray{};
             QStringList values;
-            for(auto&headerName:this->groupingFields){
+            for(auto &headerName:this->groupingFields){
                 if(!this->headers.contains(headerName))
                     continue;
                 const auto &header=this->headers.header(headerName);
@@ -442,7 +442,7 @@ const QVariantList &MakerPvt::makeRecords()
 
         {//summary grouping
             auto groups=itemGrouping.keys();
-            for(auto&group:groups){
+            for(auto &group:groups){
                 auto &itemSummary=itemGrouping[group];
                 for(auto &header:this->summary.list()){
 
@@ -477,7 +477,7 @@ const QVariantList &MakerPvt::makeRecords()
                     case Header::ComputeMode::Min:
                     {
                         QVariant calc;
-                        for(auto&v:vGroupedList){
+                        for(auto &v:vGroupedList){
                             switch (header->computeMode()) {
                             case Header::ComputeMode::Sum:
                                 calc=calc.toDouble()+vu.toDouble(v);
@@ -503,7 +503,7 @@ const QVariantList &MakerPvt::makeRecords()
                     case Header::ComputeMode::Avg:
                     {
                         double calc=0;
-                        for(auto&v:vGroupedList){
+                        for(auto &v:vGroupedList){
                             calc+=vu.toDouble(v);
                             break;
                         }
@@ -523,7 +523,7 @@ const QVariantList &MakerPvt::makeRecords()
         {//write grouping summary
             auto groups=itemGrouping.keys();
             groups.sort();
-            for(auto&group:groups){
+            for(auto &group:groups){
                 QVariantHash itemRowFormatted;
                 auto &itemSummary=itemGrouping[group];
                 for(auto &header : this->summary.list()){
@@ -563,7 +563,7 @@ const QVariantList &MakerPvt::makeRecords()
 //            vLine.append(this->parserText(this->groupingDisplay, itemRecord));
 //        }
 //        else{
-//            for(auto&headerName: this->groupingFields){
+//            for(auto &headerName: this->groupingFields){
 //                if(!this->headers.contains(headerName))
 //                    continue;
 //                static const auto __format=QString("%1: %2");
@@ -599,7 +599,7 @@ const QVariantList &MakerPvt::makeRecords()
 
             {
                 //new group check
-                for(auto&headerName:this->groupingFields){
+                for(auto &headerName:this->groupingFields){
                     if(!this->headers.contains(headerName))
                         continue;
 
@@ -757,7 +757,7 @@ QString QRmk::MakerPvt::pdfMakeSingleLine()
         vLine.append(this->parserText(this->groupingDisplay, pdfItemRecord));
     }
     else{
-        for(auto&headerName: this->groupingFields){
+        for(auto &headerName: this->groupingFields){
             if(!this->headers.contains(headerName))
                 continue;
             static const auto __format=QString("%1: %2");
@@ -1429,7 +1429,7 @@ QString MakerPvt::pdfWrite()
         }
     }
     pdfParseList(outPutRecord);
-    for(auto&v:secondList){
+    for(auto &v:secondList){
         auto vList=QVariantList({v});
         pdfParseList(vList);
     }

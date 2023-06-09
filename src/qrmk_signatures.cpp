@@ -139,7 +139,7 @@ QList<Signature *> &Signatures::signatures() const
     }
     if(p->list.isEmpty()){
         auto vList=p->collection.values();
-        for(auto&field:vList)
+        for(auto &field:vList)
             p->list.append(field);
     }
     return p->list;
