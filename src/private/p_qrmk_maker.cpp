@@ -78,7 +78,7 @@ static const QVariantHash extractHash(const QObject *object, const QStringList &
 
         auto value=property.read(object);
 
-        auto obj=value.value<QObject*>();
+        auto obj=value.value<QObject *>();
         if(obj)
             value = extractHash(obj, ignoreProperties);
 
