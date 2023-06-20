@@ -29,7 +29,8 @@ public:
     MakerPvt::RowType rowType;
     QVariant rowValue;
     QVariant value;
-    explicit ItemRow(const QVariant &v={}){
+    explicit ItemRow(const QVariant &v={})
+    {
         auto vHash=v.toHash();
         QStm::MetaEnum<MakerPvt::RowType> rowType=vHash.value(__rowType);
         this->value=v;
@@ -236,7 +237,6 @@ QVariant MakerPvt::parserValue(const QVariant &valueParser, const QVariantHash &
     default:
         return valueParser;
     }
-
     return parserText(valueParser, itemRecord);
 }
 
