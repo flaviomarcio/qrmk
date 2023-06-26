@@ -1084,7 +1084,7 @@ void QRmk::MakerPvt::pdfWriteSingleLine(const QVariant &outItem)
         for(auto &header : pdfHeadersList){
             auto value=itemRow.value(header->field());
 
-            if(value.isNull() && !value.isValid())
+            if(value.isNull() || !value.isValid())
                 continue;
 
             auto valueText=header->toFormattedValue(value);
