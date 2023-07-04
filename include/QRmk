@@ -1,1 +1,3 @@
+#ifdef QTREFORCE_QRMK
 #include "../src/qrmk.h"
+#endif

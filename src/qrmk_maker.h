@@ -22,19 +22,19 @@ public:
     //!
     //! \brief The OutFormat enum
     //!
-    enum class OutFormat{PDF=0, CSV=1, TXT=2};
+    enum OutFormat{PDF=0, CSV=1, TXT=2};
     Q_ENUM(OutFormat)
 
     //!
     //! \brief The Orientation enum
     //!
-    enum class Orientation{Portrait=0, Landscape=1};
+    enum Orientation{Portrait=0, Landscape=1};
     Q_ENUM(Orientation);
 
     //!
     //! \brief The Alignment enum
     //!
-    enum class Alignment{
+    enum Alignment{
         Start=Qt::AlignLeft,
         Center=Qt::AlignCenter,
         End=Qt::AlignRight,

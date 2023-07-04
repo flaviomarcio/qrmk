@@ -1,6 +1,8 @@
 #pragma once
 
+#ifdef QT_GUI_LIB
 #include <QFont>
+#endif
 #include "../../qstm/src/qstm_object_wrapper.h"
 #include "./qrmk_global.h"
 
@@ -21,7 +23,11 @@ class Q_RMK_EXPORT Header : public QStm::ObjectWrapper
     Q_PROPERTY(QVariant width READ width WRITE width RESET resetWidth NOTIFY widthChanged)
     Q_PROPERTY(QVariant foreGroundColor READ foreGroundColor WRITE foreGroundColor RESET resetForeGroundColor NOTIFY foreGroundColorChanged)
     Q_PROPERTY(QVariant backGroundColor READ backGroundColor WRITE backGroundColor RESET resetBackGroundColor NOTIFY backGroundColorChanged)
+#ifdef QT_GUI_LIB
     Q_PROPERTY(QFont font READ font WRITE font RESET resetFont NOTIFY fontChanged)
+#else
+    Q_PROPERTY(QVariant font READ font WRITE font RESET resetFont NOTIFY fontChanged)
+#endif
     Q_PROPERTY(bool visible READ visible WRITE visible RESET resetVisible NOTIFY visibleChanged)
     Q_PROPERTY(ComputeMode computeMode READ computeMode WRITE computeMode RESET resetComputeMode NOTIFY computeModeChanged)
     Q_PROPERTY(QString format READ format WRITE format RESET resetFormat NOTIFY formatChanged)
@@ -30,7 +36,7 @@ public:
     //!
     //! \brief The Alignment enum
     //!
-    enum class Alignment{
+    enum Alignment{
         Start=Qt::AlignLeft,
         Center=Qt::AlignCenter,
         End=Qt::AlignRight,
@@ -57,7 +63,7 @@ public:
     };
     Q_ENUM(DataType)
 
-    enum class ComputeMode{
+    enum ComputeMode{
           None
         , Text
         , Count
@@ -183,9 +189,15 @@ public:
     //! \brief font
     //! \return
     //!
+#ifdef QT_GUI_LIB
     const QFont &font() const;
     Header &font(const QFont &newFont);
     Header &resetFont();
+#else
+    const QVariant &font() const;
+    Header &font(const QVariant &newFont);
+    Header &resetFont();
+#endif
 
     //!
     //! \brief visible

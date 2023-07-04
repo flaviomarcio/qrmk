@@ -3,7 +3,6 @@
 
 namespace QRmk{
 
-
 class SignaturePvt:public QObject{
 public:
     QStm::MetaEnum<Signature::DocumentType> documentType=Signature::DocumentType::None;

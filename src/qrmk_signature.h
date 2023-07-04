@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../../qstm/src/qstm_object_wrapper.h"
 #include "./qrmk_global.h"
+#include "../../qstm/src/qstm_object_wrapper.h"
 
 namespace QRmk{
 class SignaturePvt;
@@ -15,7 +15,7 @@ class Q_RMK_EXPORT Signature : public QStm::ObjectWrapper
     Q_PROPERTY(QString name READ name WRITE name RESET resetName NOTIFY nameChanged)
     Q_PROPERTY(QStringList extraLines READ extraLines WRITE extraLines RESET resetExtraLines NOTIFY extraLinesChanged)
 public:
-    enum class DocumentType{
+    enum DocumentType{
         None, CNPJ, CPF
     };
 

@@ -22,7 +22,11 @@ public:
     QVariant width;
     QVariant foreGroundColor=__black;
     QVariant backGroundColor=__transparent;
+#ifdef QT_GUI_LIB
     QFont font=QApplication::font();
+#else
+    QVariant font;
+#endif
     bool visible=true;
     QStm::MetaEnum<Header::ComputeMode> computeMode=Header::ComputeMode::None;
     QString format;
@@ -342,12 +346,20 @@ Header &Header::resetBackGroundColor()
     return this->backGroundColor(__transparent);
 }
 
+#ifdef QT_GUI_LIB
 const QFont &Header::font() const
+#else
+const QVariant &Header::font() const
+#endif
 {
     return p->font;
 }
 
+#ifdef QT_GUI_LIB
 Header &Header::font(const QFont &newFont)
+#else
+Header &Header::font(const QVariant &newFont)
+#endif
 {
     if (p->font == newFont)
         return *this;
