@@ -3,9 +3,8 @@
 namespace QRmk{
 
 Maker::Maker(QObject *parent)
-    : QObject{parent}
+    : QObject{parent}, p{new MakerPvt{this}}
 {
-    this->p=new MakerPvt{this};
 }
 
 const QVariantHash Maker::toHash() const

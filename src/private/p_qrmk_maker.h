@@ -22,8 +22,6 @@ public:
 
     Q_ENUM(RowType)
 public:
-
-    Q_DECLARE_VU;
     Maker*parent=nullptr;
     QStm::MetaEnum<Maker::Orientation> orientation=Maker::Orientation::Portrait;
     Maker::OutFormat outFormat=Maker::OutFormat::PDF;
@@ -41,6 +39,7 @@ public:
     QByteArray columnSeparator;
     bool columnTabular=true;
     QStringList extraPageInfo;
+    Q_DECLARE_VU;
 
     explicit MakerPvt(Maker *parent=nullptr);
 

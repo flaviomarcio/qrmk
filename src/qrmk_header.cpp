@@ -86,9 +86,8 @@ public:
 };
 
 Header::Header(QObject *parent)
-    : QStm::ObjectWrapper{parent}
+    : QStm::ObjectWrapper{parent}, p{new HeaderPvt{parent}}
 {
-    this->p=new HeaderPvt{parent};
 }
 
 const QString Header::toFormattedValue(const QVariant &v)const

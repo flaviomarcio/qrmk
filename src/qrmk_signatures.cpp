@@ -9,9 +9,9 @@ namespace QRmk{
 
 class SignaturesPvt:public QObject{
 public:
+    Signatures *parent=nullptr;
     QStringList order;
     QVariantList vList;
-    Signatures *parent=nullptr;
     QList<Signature *> list;
     QHash<QString, Signature*> collection;
     Signatures::Area pageArea=Signatures::Area{"10%", "50%"};
@@ -20,9 +20,8 @@ public:
     QString local;
     QVariant width=__30P;
 
-    explicit SignaturesPvt(Signatures *parent):QObject{parent}
+    explicit SignaturesPvt(Signatures *parent):QObject{parent}, parent{parent}
     {
-        this->parent=parent;
     }
 
     void clear()
@@ -72,9 +71,8 @@ public:
 };
 
 Signatures::Signatures(QObject *parent)
-    : QStm::ObjectWrapper{parent}
+    : QStm::ObjectWrapper{parent}, p{new SignaturesPvt{this}}
 {
-    this->p=new SignaturesPvt{this};
 }
 
 bool Signatures::contains(const QString &fieldName)

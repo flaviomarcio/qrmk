@@ -8,15 +8,14 @@ namespace QRmk{
 
 class HeadersPvt:public QObject{
 public:
+    Headers *parent=nullptr;
     QStringList order;
     QVariantList vList;
-    Headers *parent=nullptr;
     QList<Header *> list;
     QHash<QString, Header*> collection;
 
-    explicit HeadersPvt(Headers *parent):QObject{parent}
+    explicit HeadersPvt(Headers *parent):QObject{parent}, parent{parent}
     {
-        this->parent=parent;
     }
 
     void clear()
@@ -74,9 +73,8 @@ public:
 };
 
 Headers::Headers(QObject *parent)
-    : QStm::ObjectWrapper{parent}
+    : QStm::ObjectWrapper{parent}, p{new HeadersPvt{this}}
 {
-    this->p=new HeadersPvt{this};
 }
 
 bool Headers::contains(const QString &fieldName)

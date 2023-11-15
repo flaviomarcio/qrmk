@@ -14,9 +14,8 @@ public:
 };
 
 Signature::Signature(QObject *parent)
-    : QStm::ObjectWrapper{parent}
+    : QStm::ObjectWrapper{parent}, p{new SignaturePvt{parent}}
 {
-    this->p=new SignaturePvt{parent};
 }
 
 QStringList Signature::extraLines() const

@@ -99,9 +99,8 @@ static const QVariantHash extractHash(const QObject *object, const QStringList &
 }
 
 
-MakerPvt::MakerPvt(Maker *parent):QObject{parent}, headers{this}, summary{this}, signature{this}
+MakerPvt::MakerPvt(Maker *parent):QObject{parent}, parent{parent}, headers{this}, summary{this}, signature{this}
 {
-    this->parent=parent;
 }
 
 const QVariantHash QRmk::MakerPvt::toHash() const
